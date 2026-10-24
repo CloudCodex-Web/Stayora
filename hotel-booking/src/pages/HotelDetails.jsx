@@ -1,0 +1,199 @@
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import hotels from "../data/hotels";
+import BookingForm from "../components/BookingForm";
+
+const galleryPhotos = [
+  {
+    url: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1400&q=85",
+    alt: "Hotel exterior and resort pool",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1400&q=85",
+    alt: "Comfortable hotel room",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1400&q=85",
+    alt: "Resort swimming pool",
+  },
+  {
+  url: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1400&q=85",
+    alt: "Hotel bedroom interior",
+  },
+];
+
+const HotelDetails = () => {
+  const { id } = useParams();
+  const [activeImage, setActiveImage] = useState(0);
+
+  const hotel = hotels.find((item) => String(item.id) === id);
+
+  if (!hotel) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-10 text-center">
+        <h1 className="text-3xl font-bold text-gray-900">Hotel not found</h1>
+        <Link
+          to="/"
+          className="mt-5 inline-block font-semibold text-emerald-700"
+        >
+          ← Back to home
+        </Link>
+      </div>
+    );
+  }
+
+  const photos = [{ url: hotel.image, alt: hotel.name }, ...galleryPhotos];
+
+  const amenities = [
+    "Free Wi-Fi",
+    "Restaurant",
+    "Room service",
+    "Free parking",
+    "Air conditioning",
+    "24-hour reception",
+  ];
+
+  return (
+    <>
+      <Navbar />
+
+      <main className="min-h-screen bg-gray-50 px-5 py-8 md:px-10">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            to="/"
+            className="mb-6 inline-block font-medium text-emerald-700 hover:text-emerald-900"
+          >
+            ← Back to hotels
+          </Link>
+
+          <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
+            {/* Hotel photo gallery */}
+            <section aria-label="Hotel photo gallery" className="p-4 md:p-6">
+              <div className="relative overflow-hidden rounded-2xl bg-gray-100">
+                <img
+                  key={photos[activeImage].url}
+                  src={photos[activeImage].url}
+                  alt={photos[activeImage].alt}
+                  className="h-72 w-full object-cover transition duration-300 md:h-[460px]"
+                />
+
+                <span className="absolute bottom-4 right-4 rounded-full bg-black/65 px-4 py-2 text-sm font-medium text-white">
+                  {activeImage + 1} / {photos.length} photos
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5">
+                {photos.map((photo, index) => (
+                  <button
+                    key={`${photo.url}-${index}`}
+                    type="button"
+                    onClick={() => setActiveImage(index)}
+                    aria-label={`View photo ${index + 1}`}
+                    aria-pressed={activeImage === index}
+                    className={`overflow-hidden rounded-xl border-2 transition ${
+                      activeImage === index
+                        ? "border-emerald-700 ring-2 ring-emerald-100"
+                        : "border-transparent hover:border-emerald-300"
+                    }`}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.alt}
+                      className="h-20 w-full object-cover sm:h-24"
+                    />
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <div className="grid gap-8 p-6 pt-2 md:grid-cols-[1fr_320px] md:p-10">
+              <section>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">
+                  {hotel.category || "Hotel"}
+                </span>
+
+                <h1 className="mt-4 text-3xl font-extrabold text-gray-900 md:text-4xl">
+                  {hotel.name}
+                </h1>
+
+                <p className="mt-3 text-gray-600">
+                  <span className="mr-2">📍</span>
+                  {hotel.location}
+                </p>
+
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <span className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white">
+                    ★ {hotel.rating}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {hotel.reviews} reviews
+                  </span>
+                </div>
+
+                <div className="my-8 border-t border-gray-200" />
+
+                <h2 className="text-2xl font-bold text-gray-900">
+                  About this hotel
+                </h2>
+
+                <p className="mt-3 leading-7 text-gray-600">
+                  Enjoy a comfortable stay at {hotel.name}, located in{" "}
+                  {hotel.location}. Relax in a welcoming atmosphere and explore
+                  nearby attractions during your visit to Nepal. Contact the
+                  property to confirm facilities and availability before
+                  booking.
+                </p>
+
+                <h2 className="mt-8 text-2xl font-bold text-gray-900">
+                  Popular amenities
+                </h2>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {amenities.map((amenity) => (
+                    <div
+                      key={amenity}
+                      className="rounded-xl border border-gray-200 p-4 text-gray-700"
+                    >
+                      <span className="mr-2 text-emerald-700">✓</span>
+                      {amenity}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Room information preview */}
+                <h2 className="mt-8 text-2xl font-bold text-gray-900">
+                  Room information
+                </h2>
+
+                <div className="mt-4 rounded-2xl border border-gray-200 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-2xl">
+                      🛏️
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Standard Room</h3>
+                      <p className="mt-1 text-sm leading-6 text-gray-500">
+                        A comfortable room for your stay. Confirm bed type,
+                        occupancy, and included facilities with the property.
+                      </p>
+                      <p className="mt-3 text-sm font-semibold text-emerald-700">
+                        Price shown below is a demo listing price.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <aside className="h-fit rounded-2xl border border-gray-200 p-6 shadow-sm md:sticky md:top-24">
+                <BookingForm hotel={hotel} />
+              </aside>
+            </div>
+          </div>
+        </div>
+      </main>
+    </>
+  );
+};
+
+export default HotelDetails;
