@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import hotels from "../data/hotels";
 import BookingForm from "../components/BookingForm";
+import { getStoredHotels, subscribeToHotelChanges } from "../data/hotelStorage";
 
 const galleryPhotos = [
   {
@@ -18,21 +19,47 @@ const galleryPhotos = [
     alt: "Resort swimming pool",
   },
   {
-  url: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1400&q=85",
+    url: "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1400&q=85",
     alt: "Hotel bedroom interior",
   },
 ];
 
-const HotelDetails = () => {
+const defaultAmenities = [
+  "Free Wi-Fi",
+  "Restaurant",
+  "Room service",
+  "Free parking",
+  "Air conditioning",
+  "24-hour reception",
+];
+
+function HotelDetails() {
   const { id } = useParams();
   const [activeImage, setActiveImage] = useState(0);
 
-  const hotel = hotels.find((item) => String(item.id) === id);
+  const [allHotels, setAllHotels] = useState(() => getStoredHotels(hotels));
+
+  useEffect(() => {
+    const refreshHotels = () => {
+      setAllHotels(getStoredHotels(hotels));
+    };
+
+    refreshHotels();
+
+    return subscribeToHotelChanges(refreshHotels);
+  }, []);
+
+  const hotel = allHotels.find((item) => String(item.id) === String(id));
 
   if (!hotel) {
     return (
       <div className="min-h-screen bg-gray-50 p-10 text-center">
         <h1 className="text-3xl font-bold text-gray-900">Hotel not found</h1>
+
+        <p className="mt-3 text-gray-600">
+          This hotel may have been removed or the link may be incorrect.
+        </p>
+
         <Link
           to="/"
           className="mt-5 inline-block font-semibold text-emerald-700"
@@ -43,16 +70,24 @@ const HotelDetails = () => {
     );
   }
 
-  const photos = [{ url: hotel.image, alt: hotel.name }, ...galleryPhotos];
-
-  const amenities = [
-    "Free Wi-Fi",
-    "Restaurant",
-    "Room service",
-    "Free parking",
-    "Air conditioning",
-    "24-hour reception",
+  const photos = [
+    ...(hotel.image ? [{ url: hotel.image, alt: hotel.name }] : []),
+    ...(Array.isArray(hotel.gallery)
+      ? hotel.gallery.map((photo) =>
+          typeof photo === "string" ? { url: photo, alt: hotel.name } : photo,
+        )
+      : galleryPhotos),
   ];
+
+  const safeActiveImage = activeImage < photos.length ? activeImage : 0;
+
+  const amenities = Array.isArray(hotel.amenities)
+    ? hotel.amenities
+    : defaultAmenities;
+
+  const description =
+    hotel.description ||
+    `Enjoy a comfortable stay at ${hotel.name}, located in ${hotel.location}. Explore the surrounding area and enjoy your visit. Please confirm facilities and availability with the property before booking.`;
 
   return (
     <>
@@ -69,43 +104,47 @@ const HotelDetails = () => {
 
           <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
             {/* Hotel photo gallery */}
-            <section aria-label="Hotel photo gallery" className="p-4 md:p-6">
-              <div className="relative overflow-hidden rounded-2xl bg-gray-100">
-                <img
-                  key={photos[activeImage].url}
-                  src={photos[activeImage].url}
-                  alt={photos[activeImage].alt}
-                  className="h-72 w-full object-cover transition duration-300 md:h-[460px]"
-                />
+            {photos.length > 0 && (
+              <section aria-label="Hotel photo gallery" className="p-4 md:p-6">
+                <div className="relative overflow-hidden rounded-2xl bg-gray-100">
+                  <img
+                    key={photos[safeActiveImage].url}
+                    src={photos[safeActiveImage].url}
+                    alt={photos[safeActiveImage].alt || hotel.name}
+                    className="h-72 w-full object-cover transition duration-300 md:h-[460px]"
+                  />
 
-                <span className="absolute bottom-4 right-4 rounded-full bg-black/65 px-4 py-2 text-sm font-medium text-white">
-                  {activeImage + 1} / {photos.length} photos
-                </span>
-              </div>
+                  <span className="absolute bottom-4 right-4 rounded-full bg-black/65 px-4 py-2 text-sm font-medium text-white">
+                    {safeActiveImage + 1} / {photos.length} photos
+                  </span>
+                </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5">
-                {photos.map((photo, index) => (
-                  <button
-                    key={`${photo.url}-${index}`}
-                    type="button"
-                    onClick={() => setActiveImage(index)}
-                    aria-label={`View photo ${index + 1}`}
-                    aria-pressed={activeImage === index}
-                    className={`overflow-hidden rounded-xl border-2 transition ${
-                      activeImage === index
-                        ? "border-emerald-700 ring-2 ring-emerald-100"
-                        : "border-transparent hover:border-emerald-300"
-                    }`}
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.alt}
-                      className="h-20 w-full object-cover sm:h-24"
-                    />
-                  </button>
-                ))}
-              </div>
-            </section>
+                {photos.length > 1 && (
+                  <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5">
+                    {photos.map((photo, index) => (
+                      <button
+                        key={`${photo.url}-${index}`}
+                        type="button"
+                        onClick={() => setActiveImage(index)}
+                        aria-label={`View photo ${index + 1}`}
+                        aria-pressed={safeActiveImage === index}
+                        className={`overflow-hidden rounded-xl border-2 transition ${
+                          safeActiveImage === index
+                            ? "border-emerald-700 ring-2 ring-emerald-100"
+                            : "border-transparent hover:border-emerald-300"
+                        }`}
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.alt || hotel.name}
+                          className="h-20 w-full object-cover sm:h-24"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             <div className="grid gap-8 p-6 pt-2 md:grid-cols-[1fr_320px] md:p-10">
               <section>
@@ -124,10 +163,11 @@ const HotelDetails = () => {
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <span className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white">
-                    ★ {hotel.rating}
+                    ★ {hotel.rating ?? "New"}
                   </span>
+
                   <span className="text-sm text-gray-600">
-                    {hotel.reviews} reviews
+                    {hotel.reviews ?? 0} reviews
                   </span>
                 </div>
 
@@ -137,13 +177,7 @@ const HotelDetails = () => {
                   About this hotel
                 </h2>
 
-                <p className="mt-3 leading-7 text-gray-600">
-                  Enjoy a comfortable stay at {hotel.name}, located in{" "}
-                  {hotel.location}. Relax in a welcoming atmosphere and explore
-                  nearby attractions during your visit to Nepal. Contact the
-                  property to confirm facilities and availability before
-                  booking.
-                </p>
+                <p className="mt-3 leading-7 text-gray-600">{description}</p>
 
                 <h2 className="mt-8 text-2xl font-bold text-gray-900">
                   Popular amenities
@@ -161,7 +195,6 @@ const HotelDetails = () => {
                   ))}
                 </div>
 
-                {/* Room information preview */}
                 <h2 className="mt-8 text-2xl font-bold text-gray-900">
                   Room information
                 </h2>
@@ -171,21 +204,71 @@ const HotelDetails = () => {
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-2xl">
                       🛏️
                     </div>
+
                     <div>
-                      <h3 className="font-bold text-gray-900">Standard Room</h3>
+                      <h3 className="font-bold text-gray-900">
+                        {hotel.roomType || "Standard Room"}
+                      </h3>
+
                       <p className="mt-1 text-sm leading-6 text-gray-500">
-                        A comfortable room for your stay. Confirm bed type,
-                        occupancy, and included facilities with the property.
+                        {hotel.roomDescription ||
+                          "A comfortable room for your stay. Confirm bed type, occupancy, and included facilities with the property."}
                       </p>
+
+                      {hotel.maxGuests && (
+                        <p className="mt-2 text-sm text-gray-600">
+                          Maximum guests: {hotel.maxGuests}
+                        </p>
+                      )}
+
                       <p className="mt-3 text-sm font-semibold text-emerald-700">
-                        Price shown below is a demo listing price.
+                        NPR {Number(hotel.price || 0).toLocaleString("en-IN")} /
+                        night
                       </p>
                     </div>
                   </div>
                 </div>
+
+                <h2 className="mt-8 text-2xl font-bold text-gray-900">
+                  Check-in and check-out
+                </h2>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-gray-200 p-4">
+                    <p className="text-sm text-gray-500">Check-in</p>
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {hotel.checkIn || "Contact property"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 p-4">
+                    <p className="text-sm text-gray-500">Check-out</p>
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {hotel.checkOut || "Contact property"}
+                    </p>
+                  </div>
+                </div>
+
+                {hotel.policies && (
+                  <>
+                    <h2 className="mt-8 text-2xl font-bold text-gray-900">
+                      Hotel policies
+                    </h2>
+                    <p className="mt-3 leading-7 text-gray-600">
+                      {hotel.policies}
+                    </p>
+                  </>
+                )}
               </section>
 
               <aside className="h-fit rounded-2xl border border-gray-200 p-6 shadow-sm md:sticky md:top-24">
+                <div className="mb-5">
+                  <p className="text-sm text-gray-500">Price per night</p>
+                  <p className="mt-1 text-2xl font-extrabold text-gray-900">
+                    NPR {Number(hotel.price || 0).toLocaleString("en-IN")}
+                  </p>
+                </div>
+
                 <BookingForm hotel={hotel} />
               </aside>
             </div>
@@ -194,6 +277,6 @@ const HotelDetails = () => {
       </main>
     </>
   );
-};
+}
 
 export default HotelDetails;

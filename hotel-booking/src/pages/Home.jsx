@@ -1,45 +1,91 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import FeaturedHotel from "../components/FeaturedHotel";
 import HotelSearchFilters from "../components/HotelSearchFilters";
 import About from "./About";
 import Contact from "./Contact";
+
 import hotels from "../data/hotels";
+import { getStoredHotels, subscribeToHotelChanges } from "../data/hotelStorage";
 
 function Home() {
-  const maxPrice = Math.max(...hotels.map((hotel) => Number(hotel.price) || 0));
+  // Load hotels managed by the admin panel.
+  const [allHotels, setAllHotels] = useState(() => getStoredHotels(hotels));
 
+  // Search and filter states.
   const [filters, setFilters] = useState({
     search: "",
     location: "All locations",
-    maxPrice,
+    maxPrice: 0,
     sortBy: "recommended",
   });
 
   const [heroDestination, setHeroDestination] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Listen for hotel changes from the admin panel.
+  useEffect(() => {
+    function refreshHotels() {
+      setAllHotels(getStoredHotels(hotels));
+    }
+
+    return subscribeToHotelChanges(refreshHotels);
+  }, []);
+
+  // Only active hotels should be visible to customers.
+  const availableHotels = useMemo(() => {
+    return allHotels.filter(
+      (hotel) => hotel.status?.toLowerCase() !== "inactive",
+    );
+  }, [allHotels]);
+
+  // Update the maximum price whenever the available hotels change.
+  const maxPrice = useMemo(() => {
+    return Math.max(
+      0,
+      ...availableHotels.map((hotel) => Number(hotel.price) || 0),
+    );
+  }, [availableHotels]);
+
+  // Update the price filter if a newly added hotel costs more.
+  useEffect(() => {
+    setFilters((previousFilters) => ({
+      ...previousFilters,
+      maxPrice:
+        previousFilters.maxPrice === 0
+          ? maxPrice
+          : Math.max(previousFilters.maxPrice, maxPrice),
+    }));
+  }, [maxPrice]);
+
+  // Get unique hotel locations for the location dropdown.
   const locations = useMemo(() => {
     return [
       ...new Set(
-        hotels.map((hotel) => {
-          const parts = hotel.location.split(",");
-          return parts.length > 1
-            ? parts[parts.length - 1].trim() === "Nepal"
-              ? parts[0].trim()
-              : parts[parts.length - 1].trim()
-            : hotel.location.trim();
+        availableHotels.map((hotel) => {
+          const location = (hotel.location || "").trim();
+          const parts = location.split(",");
+
+          if (parts.length > 1 && parts[parts.length - 1].trim() === "Nepal") {
+            return parts[0].trim();
+          }
+
+          return parts.length > 1 ? parts[parts.length - 1].trim() : location;
         }),
       ),
-    ].sort();
-  }, []);
+    ]
+      .filter(Boolean)
+      .sort();
+  }, [availableHotels]);
 
+  // Search, filter, and sort hotels.
   const filteredHotels = useMemo(() => {
     const searchText = filters.search.trim().toLowerCase();
     const destinationText = heroDestination.trim().toLowerCase();
 
-    const results = hotels.filter((hotel) => {
+    const results = availableHotels.filter((hotel) => {
       const name = (hotel.name || "").toLowerCase();
       const location = (hotel.location || "").toLowerCase();
       const category = (hotel.category || "").toLowerCase();
@@ -57,12 +103,14 @@ function Home() {
         location.includes(destinationText) ||
         category.includes(destinationText);
 
-      const parts = hotel.location.split(",");
-      const primaryLocation = parts[0].trim();
+      const primaryLocation = location.split(",")[0].trim();
+
+      const selectedLocation = filters.location.toLowerCase();
+
       const matchesLocation =
         filters.location === "All locations" ||
-        primaryLocation.toLowerCase() === filters.location.toLowerCase() ||
-        location.includes(filters.location.toLowerCase());
+        primaryLocation === selectedLocation ||
+        location.includes(selectedLocation);
 
       const matchesPrice = price <= Number(filters.maxPrice);
 
@@ -74,12 +122,13 @@ function Home() {
     } else if (filters.sortBy === "price-high") {
       results.sort((a, b) => Number(b.price) - Number(a.price));
     } else if (filters.sortBy === "name") {
-      results.sort((a, b) => a.name.localeCompare(b.name));
+      results.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     }
 
     return results;
-  }, [filters, heroDestination]);
+  }, [availableHotels, filters, heroDestination]);
 
+  // Handle search from the hero section.
   function handleHeroSearch({ destination = "" } = {}) {
     setHeroDestination(destination);
     setHasSearched(true);
@@ -89,6 +138,7 @@ function Home() {
     });
   }
 
+  // Reset all search filters.
   function handleReset() {
     setFilters({
       search: "",
@@ -96,6 +146,7 @@ function Home() {
       maxPrice,
       sortBy: "recommended",
     });
+
     setHeroDestination("");
     setHasSearched(false);
   }
@@ -131,9 +182,11 @@ function Home() {
                 <h3 className="text-lg font-bold text-gray-900">
                   No hotels found
                 </h3>
+
                 <p className="mt-2 text-sm text-gray-500">
                   Try another search or reset your filters.
                 </p>
+
                 <button
                   type="button"
                   onClick={handleReset}

@@ -26,21 +26,31 @@ const roomTypes = [
   },
 ];
 
+function getLocalDateString() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function BookingForm({ hotel }) {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
   const [roomId, setRoomId] = useState("standard");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
-
-  const today = new Date().toLocaleDateString("en-CA");
+  const today = getLocalDateString();
 
   const selectedRoom =
     roomTypes.find((room) => room.id === roomId) || roomTypes[0];
 
   const basePrice = Number(hotel?.price) || 0;
+
   const price = Math.round(basePrice * selectedRoom.multiplier);
 
   const nights =
@@ -55,9 +65,15 @@ function BookingForm({ hotel }) {
 
   function handleBooking(event) {
     event.preventDefault();
+    setMessage("");
+
+    if (!hotel?.id || !hotel?.name) {
+      setMessage("Hotel information is unavailable. Please try again.");
+      return;
+    }
 
     if (!checkIn || !checkOut) {
-      setMessage("Please select both dates.");
+      setMessage("Please select both check-in and check-out dates.");
       return;
     }
 
@@ -71,28 +87,54 @@ function BookingForm({ hotel }) {
       return;
     }
 
-    if (Number(guests) > selectedRoom.capacity) {
+    if (Number(guests) < 1 || Number(guests) > selectedRoom.capacity) {
       setMessage(
-        `This room accommodates up to ${selectedRoom.capacity} guests.`,
+        `This room accommodates 1 to ${selectedRoom.capacity} guests.`,
       );
       return;
     }
 
-    const booking = saveBooking({
-      hotel,
-      checkIn,
-      checkOut,
-      guests: Number(guests),
-      nights,
-      total,
-      price,
-      roomType: selectedRoom.name,
-      roomCapacity: selectedRoom.capacity,
-    });
+    if (price <= 0 || !Number.isFinite(total)) {
+      setMessage("The booking price is invalid. Please try again.");
+      return;
+    }
 
-    navigate("/booking-confirmation", {
-      state: booking,
-    });
+    setIsSubmitting(true);
+
+    try {
+      const booking = saveBooking({
+        hotel,
+        hotelId: hotel.id,
+        hotelName: hotel.name,
+        checkIn,
+        checkOut,
+        guests: Number(guests),
+        nights,
+        total,
+        price,
+        roomType: selectedRoom.name,
+        roomCapacity: selectedRoom.capacity,
+
+        // Every new booking awaits admin approval.
+        status: "Pending",
+        createdAt: new Date().toISOString(),
+      });
+
+      if (!booking) {
+        throw new Error("The booking could not be saved.");
+      }
+
+      navigate("/booking-confirmation", {
+        state: {
+          ...booking,
+          status: booking.status || "Pending",
+        },
+      });
+    } catch (error) {
+      console.error("Booking submission failed:", error);
+      setMessage("We couldn't save your booking. Please try again.");
+      setIsSubmitting(false);
+    }
   }
 
   function handleRoomChange(event) {
@@ -113,7 +155,7 @@ function BookingForm({ hotel }) {
       <p className="text-sm font-medium text-gray-500">Starting from</p>
 
       <p className="mt-1 text-3xl font-extrabold text-gray-900">
-        NPR {basePrice.toLocaleString("en-IN")}
+        NPR {basePrice.toLocaleString("en-NP")}
         <span className="text-sm font-normal text-gray-500"> / night</span>
       </p>
 
@@ -145,11 +187,11 @@ function BookingForm({ hotel }) {
           </p>
 
           <p className="mt-2 font-bold text-emerald-700">
-            NPR {price.toLocaleString("en-IN")} / night
+            NPR {price.toLocaleString("en-NP")} / night
           </p>
 
           <p className="mt-1 text-xs text-gray-500">
-            Demo room pricing; actual availability and rates are not verified.
+            Demo pricing. Actual room availability is not verified.
           </p>
         </div>
 
@@ -169,6 +211,7 @@ function BookingForm({ hotel }) {
             value={checkIn}
             onChange={(event) => {
               const value = event.target.value;
+
               setCheckIn(value);
               setMessage("");
 
@@ -193,7 +236,7 @@ function BookingForm({ hotel }) {
           <input
             id="checkOut"
             type="date"
-            min={checkIn || today}
+            min={checkIn ? (checkIn >= today ? checkIn : today) : today}
             value={checkOut}
             onChange={(event) => {
               setCheckOut(event.target.value);
@@ -204,7 +247,7 @@ function BookingForm({ hotel }) {
           />
         </div>
 
-        {/* Guest selection */}
+        {/* Guests */}
         <div>
           <label
             htmlFor="guests"
@@ -237,7 +280,7 @@ function BookingForm({ hotel }) {
           </p>
         </div>
 
-        {/* Price summary */}
+        {/* Booking summary */}
         {nights > 0 && (
           <div className="rounded-xl bg-emerald-50 p-4">
             <p className="mb-3 text-sm font-semibold text-emerald-900">
@@ -253,32 +296,45 @@ function BookingForm({ hotel }) {
 
             <div className="mt-2 flex justify-between gap-3 text-sm text-gray-600">
               <span>
-                NPR {price.toLocaleString("en-IN")} × {nights} night(s)
+                NPR {price.toLocaleString("en-NP")} × {nights} night(s)
               </span>
               <span className="font-semibold text-gray-900">
-                NPR {total.toLocaleString("en-IN")}
+                NPR {total.toLocaleString("en-NP")}
               </span>
             </div>
 
             <div className="mt-3 flex justify-between border-t border-emerald-200 pt-3">
               <span className="font-bold text-gray-900">Total</span>
               <span className="text-lg font-extrabold text-emerald-700">
-                NPR {total.toLocaleString("en-IN")}
+                NPR {total.toLocaleString("en-NP")}
               </span>
             </div>
           </div>
         )}
 
+        {/* Approval information */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="font-semibold text-amber-900">
+            Admin approval required
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            Your booking request will remain pending until the admin accepts or
+            rejects it. Submitting this request does not guarantee room
+            availability.
+          </p>
+        </div>
+
         <button
           type="submit"
-          className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white transition hover:bg-emerald-800"
+          disabled={isSubmitting}
+          className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Check Booking
+          {isSubmitting ? "Submitting..." : "Submit Booking Request"}
         </button>
 
         {message && (
           <p
-            role="status"
+            role="alert"
             className="rounded-xl bg-gray-100 p-3 text-sm font-medium text-gray-700"
           >
             {message}

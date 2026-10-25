@@ -1,12 +1,26 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFavorites } from "../context/FavoritesContext";
 import hotels from "../data/hotels";
+import { getStoredHotels, subscribeToHotelChanges } from "../data/hotelStorage";
 
 function Wishlist() {
   const { favoriteIds, toggleFavorite } = useFavorites();
 
-  const favoriteHotels = hotels.filter((hotel) =>
-    favoriteIds.includes(hotel.id),
+  const [allHotels, setAllHotels] = useState(() => getStoredHotels(hotels));
+
+  useEffect(() => {
+    const refreshHotels = () => {
+      setAllHotels(getStoredHotels(hotels));
+    };
+
+    refreshHotels();
+
+    return subscribeToHotelChanges(refreshHotels);
+  }, []);
+
+  const favoriteHotels = allHotels.filter((hotel) =>
+    favoriteIds.some((id) => String(id) === String(hotel.id)),
   );
 
   return (
@@ -29,12 +43,15 @@ function Wishlist() {
         {favoriteHotels.length === 0 ? (
           <div className="rounded-2xl bg-white px-6 py-16 text-center shadow-sm">
             <div className="mb-4 text-5xl">♡</div>
+
             <h2 className="text-xl font-bold text-gray-900">
               Your wishlist is empty
             </h2>
+
             <p className="mt-2 text-gray-500">
               Save hotels by tapping the heart on any hotel card.
             </p>
+
             <Link
               to="/"
               className="mt-6 inline-block rounded-xl bg-emerald-700 px-6 py-3 font-semibold text-white hover:bg-emerald-800"
@@ -78,9 +95,11 @@ function Wishlist() {
                     <h2 className="text-lg font-bold text-gray-900">
                       {hotel.name}
                     </h2>
+
                     <p className="mt-2 text-sm text-gray-500">
                       📍 {hotel.location}
                     </p>
+
                     <p className="mt-3 font-bold text-gray-900">
                       NPR {Number(hotel.price).toLocaleString("en-IN")}
                       <span className="font-normal text-gray-500">
@@ -88,6 +107,7 @@ function Wishlist() {
                         / night
                       </span>
                     </p>
+
                     <Link
                       to={`/hotel/${hotel.id}`}
                       className="mt-4 inline-block font-semibold text-emerald-700 hover:text-emerald-800"

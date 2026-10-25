@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+
 import Home from "./pages/Home";
 import HotelDetails from "./pages/HotelDetails";
 import BookingConfirmation from "./pages/BookingConfirmation";
@@ -8,9 +9,16 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import MyProfile from "./pages/MyProfile";
 
+import AdminLayout from "./admin/AdminLayout/AdminLayout";
+import AdminDashboard from "./admin/pages/AdminDashboard";
+import AdminLogin from "./admin/pages/AdminLogin";
+import AdminProtectedRoute from "./admin/AdminProtectedRoute";
+import ManageHotels from "./admin/pages/ManageHotel";
+
 function App() {
   return (
     <Routes>
+      {/* User pages */}
       <Route path="/" element={<Home />} />
       <Route path="/hotel/:id" element={<HotelDetails />} />
       <Route path="/booking-confirmation" element={<BookingConfirmation />} />
@@ -19,6 +27,17 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/profile" element={<MyProfile />} />
+
+      {/* Admin login */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+
+      {/* Protected admin pages */}
+      <Route element={<AdminProtectedRoute />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="hotels" element={<ManageHotels />} />
+        </Route>
+      </Route>
     </Routes>
   );
 }
