@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveBooking } from "../utils/bookings";
+import { useAuth } from "../context/AuthContext";
 
 const roomTypes = [
   {
@@ -42,8 +43,8 @@ function BookingForm({ hotel }) {
   const [roomId, setRoomId] = useState("standard");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const navigate = useNavigate();
+  const { user } = useAuth();
   const today = getLocalDateString();
 
   const selectedRoom =
@@ -106,6 +107,7 @@ function BookingForm({ hotel }) {
         hotel,
         hotelId: hotel.id,
         hotelName: hotel.name,
+        userEmail: user?.email?.trim().toLowerCase() || "",
         checkIn,
         checkOut,
         guests: Number(guests),

@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import {
   Hotel,
   CalendarCheck,
-  Users,
   Wallet,
   ArrowUpRight,
-  ArrowDownRight,
   Clock3,
   Star,
   CheckCircle2,
@@ -17,52 +15,38 @@ import {
   getStoredHotels,
   subscribeToHotelChanges,
 } from "../../data/hotelStorage";
-
-const bookings = [
-  {
-    id: "#ST-1024",
-    guest: "Aarav Sharma",
-    hotel: "Himalayan Grand",
-    date: "24 Oct 2026",
-    amount: 12000,
-    status: "Confirmed",
-  },
-  {
-    id: "#ST-1023",
-    guest: "Sanjana Thapa",
-    hotel: "Pokhara Lakeside Resort",
-    date: "23 Oct 2026",
-    amount: 8500,
-    status: "Pending",
-  },
-  {
-    id: "#ST-1022",
-    guest: "Rohan Shrestha",
-    hotel: "Kathmandu Heritage Inn",
-    date: "22 Oct 2026",
-    amount: 6200,
-    status: "Cancelled",
-  },
-  {
-    id: "#ST-1021",
-    guest: "Priya Karki",
-    hotel: "Everest View Lodge",
-    date: "21 Oct 2026",
-    amount: 15000,
-    status: "Confirmed",
-  },
-];
-
-const statusStyles = {
-  Confirmed: "bg-emerald-50 text-emerald-700",
-  Pending: "bg-amber-50 text-amber-700",
-  Cancelled: "bg-red-50 text-red-700",
-};
+import { getBookings, subscribeToBookingChanges } from "../../utils/bookings";
 
 const money = (amount) => `NPR ${Number(amount || 0).toLocaleString("en-NP")}`;
 
+const statusStyles = {
+  Pending: "bg-amber-50 text-amber-700",
+  Accepted: "bg-emerald-50 text-emerald-700",
+  Confirmed: "bg-emerald-50 text-emerald-700",
+  Rejected: "bg-red-50 text-red-700",
+  Cancelled: "bg-gray-100 text-gray-600",
+};
+
+function formatDate(date) {
+  if (!date) return "—";
+
+  const parsed = new Date(
+    String(date).length === 10 ? `${date}T00:00:00` : date,
+  );
+
+  return Number.isNaN(parsed.getTime())
+    ? "—"
+    : parsed.toLocaleDateString("en-NP", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+}
+
 export default function AdminDashboard() {
   const [allHotels, setAllHotels] = useState(() => getStoredHotels(hotels));
+
+  const [bookings, setBookings] = useState(() => getBookings());
 
   useEffect(() => {
     const refreshHotels = () => {
@@ -72,6 +56,16 @@ export default function AdminDashboard() {
     refreshHotels();
 
     return subscribeToHotelChanges(refreshHotels);
+  }, []);
+
+  useEffect(() => {
+    const refreshBookings = () => {
+      setBookings(getBookings());
+    };
+
+    refreshBookings();
+
+    return subscribeToBookingChanges(refreshBookings);
   }, []);
 
   const activeHotels = allHotels.filter(
@@ -89,13 +83,23 @@ export default function AdminDashboard() {
       ).toFixed(1)
     : "—";
 
-  const confirmedBookings = bookings.filter(
-    (booking) => booking.status === "Confirmed",
-  ).length;
+  const pendingBookings = bookings.filter(
+    (booking) => (booking.status || "Pending") === "Pending",
+  );
 
-  const demoRevenue = bookings
-    .filter((booking) => booking.status === "Confirmed")
-    .reduce((total, booking) => total + booking.amount, 0);
+  const acceptedBookings = bookings.filter(
+    (booking) =>
+      booking.status === "Accepted" || booking.status === "Confirmed",
+  );
+
+  const rejectedBookings = bookings.filter(
+    (booking) => booking.status === "Rejected",
+  );
+
+  const demoRevenue = acceptedBookings.reduce(
+    (total, booking) => total + Number(booking.total || 0),
+    0,
+  );
 
   const stats = [
     {
@@ -106,27 +110,35 @@ export default function AdminDashboard() {
       color: "bg-blue-100 text-blue-700",
     },
     {
-      title: "Demo Bookings",
+      title: "Total Bookings",
       value: bookings.length.toLocaleString("en-NP"),
-      detail: `${confirmedBookings} confirmed`,
+      detail: `${acceptedBookings.length} accepted`,
       icon: CalendarCheck,
       color: "bg-teal-100 text-teal-700",
     },
     {
-      title: "Average Rating",
-      value: averageRating,
-      detail: `${ratedHotels.length} hotels rated`,
-      icon: Star,
-      color: "bg-violet-100 text-violet-700",
-    },
-    {
-      title: "Demo Revenue",
-      value: money(demoRevenue),
-      detail: "From confirmed demo bookings",
-      icon: Wallet,
+      title: "Pending Requests",
+      value: pendingBookings.length.toLocaleString("en-NP"),
+      detail: `${rejectedBookings.length} rejected`,
+      icon: Clock3,
       color: "bg-amber-100 text-amber-700",
     },
+    {
+      title: "Estimated Revenue",
+      value: money(demoRevenue),
+      detail: "From accepted bookings only",
+      icon: Wallet,
+      color: "bg-emerald-100 text-emerald-700",
+    },
   ];
+
+  const recentBookings = [...bookings]
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    })
+    .slice(0, 5);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -185,13 +197,14 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* Hotel inventory summary */}
+      {/* Hotel inventory */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-bold text-slate-900">
               Hotel inventory
             </h3>
+
             <p className="mt-1 text-sm text-slate-500">
               Current hotel availability in your admin list.
             </p>
@@ -222,9 +235,22 @@ export default function AdminDashboard() {
             {inactiveHotels} inactive hotels
           </span>
         </div>
+
+        <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-4">
+          <Star size={20} className="text-amber-500" />
+
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              Average hotel rating: {averageRating}
+            </p>
+            <p className="text-xs text-slate-500">
+              Based on {ratedHotels.length} rated hotels
+            </p>
+          </div>
+        </div>
       </section>
 
-      {/* Recent demo bookings */}
+      {/* Recent bookings */}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:px-6">
           <div>
@@ -233,79 +259,107 @@ export default function AdminDashboard() {
             </h3>
 
             <p className="mt-1 text-sm text-slate-500">
-              Sample reservations for dashboard preview.
+              Latest booking requests submitted through Stayora.
             </p>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Clock3 size={17} />
-            Demo activity
+            Live browser data
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Booking ID</th>
-                <th className="px-6 py-4 font-semibold">Guest</th>
-                <th className="px-6 py-4 font-semibold">Hotel</th>
-                <th className="px-6 py-4 font-semibold">Date</th>
-                <th className="px-6 py-4 font-semibold">Amount</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-              </tr>
-            </thead>
+        {recentBookings.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <CalendarCheck size={36} className="mx-auto text-slate-300" />
 
-            <tbody className="divide-y divide-slate-100">
-              {bookings.map((booking) => (
-                <tr key={booking.id} className="transition hover:bg-slate-50">
-                  <td className="px-6 py-4 font-semibold text-teal-700">
-                    {booking.id}
-                  </td>
+            <h4 className="mt-3 font-semibold text-slate-800">
+              No bookings yet
+            </h4>
 
-                  <td className="px-6 py-4 font-medium text-slate-800">
-                    {booking.guest}
-                  </td>
-
-                  <td className="px-6 py-4 text-slate-600">{booking.hotel}</td>
-
-                  <td className="whitespace-nowrap px-6 py-4 text-slate-600">
-                    {booking.date}
-                  </td>
-
-                  <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-800">
-                    {money(booking.amount)}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <span
-                      className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
-                        statusStyles[booking.status] ||
-                        "bg-slate-100 text-slate-700"
-                      }`}
-                    >
-                      {booking.status}
-                    </span>
-                  </td>
+            <p className="mt-1 text-sm text-slate-500">
+              New booking requests will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">Booking ID</th>
+                  <th className="px-6 py-4 font-semibold">Guest</th>
+                  <th className="px-6 py-4 font-semibold">Hotel</th>
+                  <th className="px-6 py-4 font-semibold">Check-in</th>
+                  <th className="px-6 py-4 font-semibold">Amount</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {recentBookings.map((booking, index) => {
+                  const bookingId = booking.bookingId || `booking-${index}`;
+
+                  const status = booking.status || "Pending";
+
+                  return (
+                    <tr
+                      key={bookingId}
+                      className="transition hover:bg-slate-50"
+                    >
+                      <td className="px-6 py-4 font-semibold text-teal-700">
+                        {booking.bookingId || "—"}
+                      </td>
+
+                      <td className="px-6 py-4 font-medium text-slate-800">
+                        {booking.guestName ||
+                          booking.name ||
+                          booking.fullName ||
+                          "Guest"}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {booking.hotelName || booking.hotel?.name || "Hotel"}
+                      </td>
+
+                      <td className="whitespace-nowrap px-6 py-4 text-slate-600">
+                        {formatDate(booking.checkIn)}
+                      </td>
+
+                      <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-800">
+                        {money(booking.total)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
+                            statusStyles[status] ||
+                            "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="border-t border-slate-100 px-6 py-4 text-xs text-slate-500">
-          Demo records only. Actual reservations and revenue will be connected
-          when the booking data layer is implemented.
+          Revenue is an estimate based on accepted bookings, not verified
+          payments.
         </div>
       </section>
 
       {/* Next steps */}
       <div className="rounded-2xl border border-teal-100 bg-teal-50 p-5 sm:p-6">
-        <h3 className="font-bold text-teal-950">Next step</h3>
+        <h3 className="font-bold text-teal-950">Stayora booking overview</h3>
 
         <p className="mt-1 text-sm leading-6 text-teal-900">
-          Upgrade hotel management with searchable listings, category filters,
-          improved add/edit forms, and safer delete actions.
+          Review pending requests in Manage Bookings and update their status.
+          Dashboard statistics refresh when booking data changes.
         </p>
       </div>
     </div>

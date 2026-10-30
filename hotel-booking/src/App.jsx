@@ -14,6 +14,8 @@ import AdminDashboard from "./admin/pages/AdminDashboard";
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminProtectedRoute from "./admin/AdminProtectedRoute";
 import ManageHotels from "./admin/pages/ManageHotel";
+import ManageBookings from "./admin/pages/ManageBookings";
+import ManageUsers from "./admin/pages/ManageUsers";
 
 function App() {
   return (
@@ -36,6 +38,8 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="hotels" element={<ManageHotels />} />
+          <Route path="bookings" element={<ManageBookings />} />
+          <Route path="users" element={<ManageUsers />} />
         </Route>
       </Route>
     </Routes>

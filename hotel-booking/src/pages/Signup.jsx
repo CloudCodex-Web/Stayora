@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { registerUser } from "../utils/users";
 
 function Signup() {
   const navigate = useNavigate();
@@ -51,11 +52,21 @@ function Signup() {
       return;
     }
 
-    // Frontend demo only: no real account is created.
-    login({
-      name: form.name.trim(),
-      email: form.email.trim().toLowerCase(),
-    });
+    try {
+      const newUser = registerUser({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+      });
+
+      login({
+        name: newUser.name,
+        email: newUser.email,
+      });
+
+      navigate("/");
+    } catch (error) {
+      setError(error.message || "Unable to create your account.");
+    }
 
     navigate("/");
   }
