@@ -54,7 +54,7 @@ export function updateBookingStatus(bookingId, status) {
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedBookings));
 
-  notifyBookingChanges();
+  notifyBookingChanges(); 
 
   return updatedBookings;
 }

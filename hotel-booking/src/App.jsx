@@ -16,6 +16,8 @@ import AdminProtectedRoute from "./admin/AdminProtectedRoute";
 import ManageHotels from "./admin/pages/ManageHotel";
 import ManageBookings from "./admin/pages/ManageBookings";
 import ManageUsers from "./admin/pages/ManageUsers";
+import GuestManagement from "./admin/pages/GuestManagement";
+import ReviewsManagement from "./admin/pages/ReviewsManagement";
 
 function App() {
   return (
@@ -40,8 +42,10 @@ function App() {
           <Route path="hotels" element={<ManageHotels />} />
           <Route path="bookings" element={<ManageBookings />} />
           <Route path="users" element={<ManageUsers />} />
+          <Route path="guests" element={<GuestManagement />} />
+          <Route path="reviews" element={<ReviewsManagement />} />
         </Route>
-      </Route>
+    </Route>
     </Routes>
   );
 }

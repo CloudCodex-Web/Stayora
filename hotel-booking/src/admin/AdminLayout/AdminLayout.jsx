@@ -10,6 +10,7 @@ import {
   LogOut,
   ChevronRight,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 
 const navigation = [
@@ -32,6 +33,16 @@ const navigation = [
     name: "Users",
     path: "/admin/users",
     icon: Users,
+  },
+  {
+    name: "Guest Management",
+    path: "/admin/guests",
+    icon: Users,
+  },
+  {
+    name: "Reviews",
+    path: "/admin/reviews",
+    icon: MessageSquare,
   },
 ];
 

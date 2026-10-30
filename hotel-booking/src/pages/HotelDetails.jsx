@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
 import hotels from "../data/hotels";
 import BookingForm from "../components/BookingForm";
 import { getStoredHotels, subscribeToHotelChanges } from "../data/hotelStorage";
+import { Star } from "lucide-react";
+import {
+  getReviews,
+  addReview,
+  subscribeToReviewChanges,
+} from "../utils/reviews";
 
 const galleryPhotos = [
   {
@@ -35,7 +42,14 @@ const defaultAmenities = [
 
 function HotelDetails() {
   const { id } = useParams();
+
   const [activeImage, setActiveImage] = useState(0);
+  const [reviews, setReviews] = useState(() => getReviews());
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewMessage, setReviewMessage] = useState("");
+
+  const { user } = useAuth();
 
   const [allHotels, setAllHotels] = useState(() => getStoredHotels(hotels));
 
@@ -47,6 +61,16 @@ function HotelDetails() {
     refreshHotels();
 
     return subscribeToHotelChanges(refreshHotels);
+  }, []);
+
+  useEffect(() => {
+    const refreshReviews = () => {
+      setReviews(getReviews());
+    };
+
+    refreshReviews();
+
+    return subscribeToReviewChanges(refreshReviews);
   }, []);
 
   const hotel = allHotels.find((item) => String(item.id) === String(id));
@@ -89,6 +113,38 @@ function HotelDetails() {
     hotel.description ||
     `Enjoy a comfortable stay at ${hotel.name}, located in ${hotel.location}. Explore the surrounding area and enjoy your visit. Please confirm facilities and availability with the property before booking.`;
 
+  const hotelReviews = reviews
+    .filter(
+      (review) =>
+        String(review.hotelId ?? review.hotelName) === String(hotel.id) ||
+        (!review.hotelId && review.hotelName === hotel.name),
+    )
+    .filter((review) => review.status === "Approved");
+
+  const handleReviewSubmit = (e) => {
+    e.preventDefault();
+
+    try {
+      addReview({
+        guestName: user.name,
+        guestEmail: user.email,
+        hotelId: hotel.id,
+        hotelName: hotel.name,
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+
+      setReviewComment("");
+      setReviewRating(5);
+
+      setReviewMessage(
+        "Your review has been submitted and is waiting for admin approval.",
+      );
+    } catch (error) {
+      setReviewMessage(error.message || "Could not submit review.");
+    }
+  };
+
   return (
     <>
       <Navbar />
@@ -104,6 +160,7 @@ function HotelDetails() {
 
           <div className="overflow-hidden rounded-3xl bg-white shadow-sm">
             {/* Hotel photo gallery */}
+
             {photos.length > 0 && (
               <section aria-label="Hotel photo gallery" className="p-4 md:p-6">
                 <div className="relative overflow-hidden rounded-2xl bg-gray-100">
@@ -254,16 +311,150 @@ function HotelDetails() {
                     <h2 className="mt-8 text-2xl font-bold text-gray-900">
                       Hotel policies
                     </h2>
+
                     <p className="mt-3 leading-7 text-gray-600">
                       {hotel.policies}
                     </p>
                   </>
                 )}
+
+                {/* Guest Reviews */}
+
+                <section className="mt-10 border-t border-gray-200 pt-8">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Guest Reviews
+                  </h2>
+
+                  {hotelReviews.map((review) => (
+                    <div
+                      key={review.reviewId}
+                      className="mt-4 rounded-xl border border-gray-200 p-5"
+                    >
+                      <div className="flex justify-between gap-3">
+                        <h3 className="font-semibold text-gray-900">
+                          {review.guestName}
+                        </h3>
+
+                        <span className="flex text-amber-400">
+                          {Array.from({ length: 5 }, (_, index) => (
+                            <Star
+                              key={index}
+                              size={17}
+                              fill={
+                                index < review.rating ? "currentColor" : "none"
+                              }
+                            />
+                          ))}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 text-gray-600">{review.comment}</p>
+
+                      <p className="mt-3 text-xs text-gray-400">
+                        {review.date}
+                      </p>
+                    </div>
+                  ))}
+
+                  {/* Logged-in and logged-out review forms */}
+
+                  {user ? (
+                    <div className="mt-8 rounded-2xl border border-gray-200 p-6">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Write a Review
+                      </h3>
+
+                      <form
+                        className="mt-5 space-y-5"
+                        onSubmit={handleReviewSubmit}
+                      >
+                        <div>
+                          <label className="block font-semibold text-gray-700">
+                            Your Rating
+                          </label>
+
+                          <div className="mt-2 flex gap-2">
+                            {[1, 2, 3, 4, 5].map((rating) => (
+                              <button
+                                key={rating}
+                                type="button"
+                                onClick={() => setReviewRating(rating)}
+                                aria-label={`Rate ${rating} out of 5`}
+                              >
+                                <Star
+                                  size={30}
+                                  className={
+                                    rating <= reviewRating
+                                      ? "text-amber-400"
+                                      : "text-gray-300"
+                                  }
+                                  fill={
+                                    rating <= reviewRating
+                                      ? "currentColor"
+                                      : "none"
+                                  }
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-gray-700">
+                            Your Review
+                          </label>
+
+                          <textarea
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                            required
+                            minLength={5}
+                            maxLength={1000}
+                            rows={4}
+                            placeholder="Tell us about your experience..."
+                            className="mt-2 w-full rounded-xl border border-gray-300 p-4 outline-none focus:border-emerald-600"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="rounded-xl bg-emerald-700 px-6 py-3 font-semibold text-white hover:bg-emerald-800"
+                        >
+                          Submit Review
+                        </button>
+
+                        {reviewMessage && (
+                          <p className="text-sm text-emerald-700" role="status">
+                            {reviewMessage}
+                          </p>
+                        )}
+                      </form>
+                    </div>
+                  ) : (
+                    <div className="mt-8 rounded-2xl border border-gray-200 p-6">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Write a Review
+                      </h3>
+
+                      <p className="mt-3 text-gray-600">
+                        Please log in to share your experience.
+                      </p>
+
+                      <Link
+                        to="/login"
+                        className="mt-4 inline-block rounded-xl bg-emerald-700 px-6 py-3 font-semibold text-white"
+                      >
+                        Log In
+                      </Link>
+                    </div>
+                  )}
+                </section>
               </section>
 
               <aside className="h-fit rounded-2xl border border-gray-200 p-6 shadow-sm md:sticky md:top-24">
                 <div className="mb-5">
                   <p className="text-sm text-gray-500">Price per night</p>
+
                   <p className="mt-1 text-2xl font-extrabold text-gray-900">
                     NPR {Number(hotel.price || 0).toLocaleString("en-IN")}
                   </p>

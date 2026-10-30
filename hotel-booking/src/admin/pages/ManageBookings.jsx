@@ -14,6 +14,22 @@ const statusStyles = {
   Cancelled: "bg-gray-100 text-gray-600",
 };
 
+const normalizeStatus = (status) => {
+  const value = String(status || "Pending")
+    .trim()
+    .toLowerCase();
+
+  const statusMap = {
+    pending: "Pending",
+    accepted: "Accepted",
+    confirmed: "Accepted",
+    rejected: "Rejected",
+    cancelled: "Cancelled",
+  };
+
+  return statusMap[value] || "Unknown";
+};
+
 export default function ManageBookings() {
   const [users, setUsers] = useState(() => getUsers());
 
@@ -56,7 +72,8 @@ export default function ManageBookings() {
         .some((value) => String(value).toLowerCase().includes(searchText));
 
       const matchesStatus =
-        statusFilter === "All" || booking.status === statusFilter;
+        statusFilter === "All" ||
+        normalizeStatus(booking.status) === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -74,10 +91,14 @@ export default function ManageBookings() {
 
   const counts = {
     All: bookings.length,
-    Pending: bookings.filter((b) => b.status === "Pending").length,
-    Accepted: bookings.filter((b) => b.status === "Accepted").length,
-    Rejected: bookings.filter((b) => b.status === "Rejected").length,
-    Cancelled: bookings.filter((b) => b.status === "Cancelled").length,
+    Pending: bookings.filter((b) => normalizeStatus(b.status) === "Pending")
+      .length,
+    Accepted: bookings.filter((b) => normalizeStatus(b.status) === "Accepted")
+      .length,
+    Rejected: bookings.filter((b) => normalizeStatus(b.status) === "Rejected")
+      .length,
+    Cancelled: bookings.filter((b) => normalizeStatus(b.status) === "Cancelled")
+      .length,
   };
 
   function formatDate(date) {
@@ -234,7 +255,7 @@ export default function ManageBookings() {
 
                     const guestName =
                       booking.guestName ||
-                      matchedUser   ?.name ||
+                      matchedUser?.name ||
                       booking.name ||
                       booking.fullName ||
                       "Guest";
@@ -300,7 +321,7 @@ export default function ManageBookings() {
                         </td>
 
                         <td className="px-5 py-5">
-                          {booking.status === "Pending" || !booking.status ? (
+                          {normalizeStatus(booking.status) === "Pending" ? (
                             <div className="flex flex-col gap-2">
                               <button
                                 onClick={() =>

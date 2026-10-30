@@ -21,7 +21,7 @@ const FeaturedHotel = ({ hotels, hasSearched }) => {
           </div>
         ) : (
           <p className="rounded-xl bg-gray-50 p-8 text-gray-600">
-            No hotels found for that destination. Try Pokhara or Kathmandu.
+            No hotels found for that destination.
           </p>
         )}
       </div>
