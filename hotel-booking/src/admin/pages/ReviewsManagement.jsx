@@ -14,6 +14,7 @@ import {
   updateReviewStatus,
   subscribeToReviewChanges,
 } from "../../utils/reviews";
+import { addActivityLog } from "../../utils/activityLogs";
 
 const statusStyles = {
   Approved: "bg-green-100 text-green-700",
@@ -83,8 +84,21 @@ export default function ReviewsManagement() {
 
   function handleStatusChange(reviewId, status) {
     try {
+      const review = reviews.find((item) => item.reviewId === reviewId);
+
       updateReviewStatus(reviewId, status);
       setReviews(getReviews());
+
+      if (review) {
+        addActivityLog({
+          action: status === "Approved" ? "Review Approved" : "Review Hidden",
+          category: "Review",
+          description: `${review.guestName || "A guest"}'s review for ${
+            review.hotelName || "a hotel"
+          } was ${status.toLowerCase()}.`,
+          target: reviewId,
+        });
+      }
 
       if (selectedReview?.reviewId === reviewId) {
         setSelectedReview((previous) =>

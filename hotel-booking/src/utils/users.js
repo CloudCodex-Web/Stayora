@@ -1,5 +1,5 @@
 const STORAGE_KEY = "stayora-users";
-
+import { addActivityLog } from "./activityLogs";
 function notifyUsersChanged() {
   window.dispatchEvent(new Event("stayora-users-updated"));
 }
@@ -35,10 +35,19 @@ export function registerUser({ name, email }) {
     createdAt: new Date().toISOString(),
   };
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([newUser, ...users]));
+localStorage.setItem(STORAGE_KEY, JSON.stringify([newUser, ...users]));
 
-  notifyUsersChanged();
-  return newUser;
+notifyUsersChanged();
+
+// Record guest registration
+addActivityLog({
+  action: "Guest Registered", 
+  category: "User",
+  description: `${newUser.name} registered a new Stayora account.`,
+  target: newUser.email,
+});
+
+return newUser;
 }
 
 export function subscribeToUserChanges(callback) {

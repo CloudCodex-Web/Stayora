@@ -2,11 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useFavorites } from "../context/FavoritesContext";
 import { useAuth } from "../context/AuthContext";
+import { Bell } from "lucide-react";
 
+import {
+  getUserNotifications,
+  subscribeToUserNotifications,
+} from "../utils/notifications";
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { favoriteIds } = useFavorites();
   const { user, accounts = [], logout, switchAccount } = useAuth();
 
@@ -25,6 +30,26 @@ function Navbar() {
     setMenuOpen(false);
     setProfileOpen(false);
   }
+  useEffect(() => {
+    const email = user?.email?.trim().toLowerCase();
+
+    if (!email) {
+      setUnreadNotifications(0);
+      return;
+    }
+
+    function loadUnreadNotifications() {
+      const notifications = getUserNotifications(email);
+
+      setUnreadNotifications(
+        notifications.filter((notification) => !notification.read).length,
+      );
+    }
+
+    loadUnreadNotifications();
+
+    return subscribeToUserNotifications(email, loadUnreadNotifications);
+  }, [user?.email]);
 
   useEffect(() => {
     function handleOutsideClick(event) {
@@ -267,6 +292,27 @@ function Navbar() {
           <Link to="/my-bookings" className={navLinkClass("/my-bookings")}>
             My Bookings
           </Link>
+          {user && (
+            <Link
+              to="/my-notifications"
+              aria-label={`Notifications, ${unreadNotifications} unread`}
+              className={`relative inline-flex items-center gap-2 font-medium transition hover:text-emerald-700 ${
+                location.pathname === "/my-notifications"
+                  ? "text-emerald-700"
+                  : "text-gray-600"
+              }`}
+            >
+              <span className="relative">
+                <Bell size={21} />
+
+                {unreadNotifications > 0 && (
+                  <span className="absolute -right-4 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </span>
+                )}
+              </span>
+            </Link>
+          )}
         </div>
 
         {/* Desktop account section */}
@@ -357,7 +403,23 @@ function Navbar() {
             >
               My Bookings
             </Link>
+            {user && (
+              <Link
+                to="/my-notifications"
+                onClick={closeMenu}
+                className="flex items-center gap-3 font-semibold text-emerald-700"
+              >
+                <span className="relative">
+                  <Bell size={21} />
 
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -right-4 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                    </span>
+                  )}
+                </span>
+              </Link>
+            )}
             <div className="border-t border-gray-100 pt-4">
               {user ? (
                 <ProfileMenu mobile />

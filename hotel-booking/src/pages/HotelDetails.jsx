@@ -5,7 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import hotels from "../data/hotels";
 import BookingForm from "../components/BookingForm";
 import { getStoredHotels, subscribeToHotelChanges } from "../data/hotelStorage";
-import { Star } from "lucide-react";
+import { Heart, Star } from "lucide-react";
+import { useFavorites } from "../context/FavoritesContext";
 import {
   getReviews,
   addReview,
@@ -50,7 +51,7 @@ function HotelDetails() {
   const [reviewMessage, setReviewMessage] = useState("");
 
   const { user } = useAuth();
-
+  const { toggleFavorite, isFavorite } = useFavorites();
   const [allHotels, setAllHotels] = useState(() => getStoredHotels(hotels));
 
   useEffect(() => {
@@ -209,9 +210,44 @@ function HotelDetails() {
                   {hotel.category || "Hotel"}
                 </span>
 
-                <h1 className="mt-4 text-3xl font-extrabold text-gray-900 md:text-4xl">
-                  {hotel.name}
-                </h1>
+                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <h1 className="text-3xl font-extrabold text-gray-900 md:text-4xl">
+                    {hotel.name}
+                  </h1>
+
+                  {user ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleFavorite(hotel.id)}
+                      aria-label={
+                        isFavorite(hotel.id)
+                          ? "Remove from wishlist"
+                          : "Add to wishlist"
+                      }
+                      aria-pressed={isFavorite(hotel.id)}
+                      className={`flex shrink-0 items-center justify-center gap-2 rounded-xl border px-5 py-3 font-semibold transition ${
+                        isFavorite(hotel.id)
+                          ? "border-red-200 bg-red-50 text-red-600"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      }`}
+                    >
+                      <Heart
+                        size={20}
+                        fill={isFavorite(hotel.id) ? "currentColor" : "none"}
+                      />
+
+                      {isFavorite(hotel.id) ? "Saved" : "Save to Wishlist"}
+                    </button>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 px-5 py-3 font-semibold text-gray-700 hover:border-emerald-300 hover:text-emerald-700"
+                    >
+                      <Heart size={20} />
+                      Log in to save
+                    </Link>
+                  )}
+                </div>  
 
                 <p className="mt-3 text-gray-600">
                   <span className="mr-2">📍</span>

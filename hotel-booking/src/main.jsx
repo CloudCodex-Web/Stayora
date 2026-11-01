@@ -9,11 +9,11 @@ import { AuthProvider } from "./context/AuthContext";
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <FavoritesProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <FavoritesProvider>
           <App />
-        </AuthProvider>
-      </FavoritesProvider>
+        </FavoritesProvider>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Hotel, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { addActivityLog } from "../../utils/activityLogs";
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -18,7 +19,15 @@ function AdminLogin() {
       email.trim().toLowerCase() === "admin@stayora.demo" &&
       password === "stayora123"
     ) {
+      addActivityLog({
+        action: "Admin Logged In",
+        category: "Settings",
+        description: "Administrator logged into the Stayora admin panel.",
+        target: "admin@stayora.demo",
+      });
+
       localStorage.setItem("stayora-admin-auth", "true");
+
       navigate("/admin", { replace: true });
     } else {
       setError("Invalid admin email or password.");

@@ -180,6 +180,96 @@ export default function AdminDashboard() {
     0,
   );
 
+  // Last 6 months of booking and revenue data
+  const monthlyAnalytics = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - (5 - index));
+
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    const monthBookings = bookings.filter((booking) => {
+      const createdAt = new Date(booking.createdAt);
+      return (
+        !Number.isNaN(createdAt.getTime()) &&
+        createdAt.getFullYear() === year &&
+        createdAt.getMonth() === month
+      );
+    });
+
+    const monthAccepted = monthBookings.filter(
+      (booking) =>
+        booking.status === "Accepted" || booking.status === "Confirmed",
+    );
+
+    return {
+      label: date.toLocaleDateString("en", { month: "short" }),
+      bookings: monthBookings.length,
+      revenue: monthAccepted.reduce(
+        (total, booking) => total + Number(booking.total || 0),
+        0,
+      ),
+    };
+  });
+
+  const maxMonthlyBookings = Math.max(
+    1,
+    ...monthlyAnalytics.map((item) => item.bookings),
+  );
+
+  const maxMonthlyRevenue = Math.max(
+    1,
+    ...monthlyAnalytics.map((item) => item.revenue),
+  );
+
+  const bookingStatuses = [
+    {
+      label: "Pending",
+      count: pendingBookings.length,
+      color: "bg-amber-500",
+    },
+    {
+      label: "Accepted",
+      count: acceptedBookings.length,
+      color: "bg-emerald-500",
+    },
+    {
+      label: "Rejected",
+      count: rejectedBookings.length,
+      color: "bg-red-500",
+    },
+    {
+      label: "Cancelled",
+      count: bookings.filter((booking) => booking.status === "Cancelled")
+        .length,
+      color: "bg-slate-400",
+    },
+  ];
+
+  const totalStatusBookings = Math.max(1, bookings.length);
+
+  const topHotels = Object.values(
+    acceptedBookings.reduce((result, booking) => {
+      const name = getHotelName(booking);
+
+      if (!result[name]) {
+        result[name] = {
+          name,
+          bookings: 0,
+          revenue: 0,
+        };
+      }
+
+      result[name].bookings += 1;
+      result[name].revenue += Number(booking.total || 0);
+
+      return result;
+    }, {}),
+  )
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
   const stats = [
     {
       title: "Total Hotels",
@@ -375,6 +465,202 @@ export default function AdminDashboard() {
             <p className="text-xs text-slate-500">
               Based on {ratedHotels.length} rated hotels
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Analytics overview */}
+      <section className="space-y-5">
+        <div>
+          <p className="text-sm font-medium text-teal-700">PERFORMANCE</p>
+          <h3 className="mt-1 text-2xl font-bold text-slate-900">
+            Booking Analytics
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Performance insights based on your stored booking records.
+          </p>
+        </div>
+
+        {/* Monthly charts */}
+        <div className="grid gap-5 xl:grid-cols-2">
+          {/* Booking trends */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h4 className="font-bold text-slate-900">Monthly Bookings</h4>
+            <p className="mt-1 text-xs text-slate-500">
+              Booking requests over the last six months
+            </p>
+
+            <div className="mt-7 flex h-52 items-end justify-between gap-2">
+              {monthlyAnalytics.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex h-full flex-1 flex-col items-center justify-end gap-2"
+                >
+                  <span className="text-xs font-semibold text-slate-600">
+                    {item.bookings}
+                  </span>
+
+                  <div className="flex h-36 w-full items-end justify-center">
+                    <div
+                      className="w-full max-w-10 rounded-t-lg bg-teal-600 transition-all"
+                      style={{
+                        height: `${Math.max(
+                          item.bookings > 0 ? 8 : 0,
+                          (item.bookings / maxMonthlyBookings) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <span className="text-xs text-slate-500">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Revenue trends */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h4 className="font-bold text-slate-900">Monthly Revenue</h4>
+            <p className="mt-1 text-xs text-slate-500">
+              Estimated value of accepted bookings
+            </p>
+
+            <div className="mt-7 flex h-52 items-end justify-between gap-2">
+              {monthlyAnalytics.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex h-full flex-1 flex-col items-center justify-end gap-2"
+                >
+                  <span className="text-center text-[10px] font-semibold text-slate-600">
+                    {item.revenue > 0
+                      ? `${(item.revenue / 1000).toFixed(1)}k`
+                      : "0"}
+                  </span>
+
+                  <div className="flex h-36 w-full items-end justify-center">
+                    <div
+                      className="w-full max-w-10 rounded-t-lg bg-emerald-500 transition-all"
+                      style={{
+                        height: `${Math.max(
+                          item.revenue > 0 ? 8 : 0,
+                          (item.revenue / maxMonthlyRevenue) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+
+                  <span className="text-xs text-slate-500">{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-3 text-xs text-slate-400">
+              Values shown in thousands of NPR where applicable.
+            </p>
+          </div>
+        </div>
+
+        {/* Status and top hotels */}
+        <div className="grid gap-5 xl:grid-cols-2">
+          {/* Booking status */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h4 className="font-bold text-slate-900">Booking Status</h4>
+            <p className="mt-1 text-xs text-slate-500">
+              Breakdown of all booking requests
+            </p>
+
+            <div className="mt-6 flex h-3 overflow-hidden rounded-full bg-slate-100">
+              {bookingStatuses.map((item) => (
+                <div
+                  key={item.label}
+                  className={`${item.color} transition-all`}
+                  style={{
+                    width: `${(item.count / totalStatusBookings) * 100}%`,
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {bookingStatuses.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`h-3 w-3 rounded-full ${item.color}`} />
+                    <span className="text-sm text-slate-600">{item.label}</span>
+                  </div>
+
+                  <span className="text-sm font-bold text-slate-900">
+                    {item.count}
+                    <span className="ml-2 text-xs font-normal text-slate-400">
+                      ({((item.count / totalStatusBookings) * 100).toFixed(0)}%)
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Top hotels */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h4 className="font-bold text-slate-900">Top Performing Hotels</h4>
+            <p className="mt-1 text-xs text-slate-500">
+              Ranked by accepted booking revenue
+            </p>
+
+            {topHotels.length === 0 ? (
+              <div className="py-12 text-center">
+                <Hotel className="mx-auto text-slate-300" size={32} />
+                <p className="mt-3 text-sm font-medium text-slate-600">
+                  No accepted bookings yet
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Hotel performance will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-5">
+                {topHotels.map((hotel, index) => (
+                  <div key={hotel.name}>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-sm font-bold text-teal-700">
+                          {index + 1}
+                        </span>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-800">
+                            {hotel.name}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {hotel.bookings} accepted booking(s)
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="shrink-0 text-xs font-bold text-slate-700">
+                        {money(hotel.revenue)}
+                      </span>
+                    </div>
+
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-teal-600"
+                        style={{
+                          width: `${
+                            (hotel.revenue /
+                              Math.max(1, topHotels[0].revenue)) *
+                            100
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

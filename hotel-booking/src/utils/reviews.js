@@ -1,5 +1,6 @@
 const STORAGE_KEY = "stayora_reviews";
-
+import { addNotification } from "./notifications";
+import { addActivityLog } from "./activityLogs";
 const sampleReviews = [
   {
     reviewId: "REV-1001",
@@ -113,6 +114,20 @@ export function addReview(reviewData) {
 
   window.dispatchEvent(new Event("reviewsUpdated"));
 
+  // Notify admin about the new review
+  addNotification({
+    title: "New Review Received",
+    message: `${newReview.guestName} submitted a ${rating}-star review for ${newReview.hotelName || "a hotel"}.`,
+    type: "review",
+    link: "/admin/reviews",
+  });
+
+  addActivityLog({
+    action: "Review Submitted",
+    category: "Review",
+    description: `${newReview.guestName} submitted a ${rating}-star review for ${newReview.hotelName || "a hotel"}.`,
+    target: newReview.reviewId,
+  });
   return newReview;
 }
 

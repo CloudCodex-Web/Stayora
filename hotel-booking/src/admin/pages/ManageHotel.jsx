@@ -20,6 +20,7 @@ import {
   getStoredHotels,
   subscribeToHotelChanges,
 } from "../../data/hotelStorage";
+import { addActivityLog } from "../../utils/activityLogs";
 
 const STORAGE_KEY = "stayora-admin-hotels";
 
@@ -290,6 +291,14 @@ export default function ManageHotels() {
     setIsSaving(false);
 
     if (success) {
+      addActivityLog({
+        action: editingId !== null ? "Hotel Updated" : "Hotel Added",
+        category: "Hotel",
+        description:
+          editingId !== null
+            ? `${name} hotels were updated.`
+            : `${name} was added to Stayora.`,
+      });
       closeForm();
     }
   };
@@ -305,6 +314,13 @@ export default function ManageHotels() {
     );
 
     if (persistHotels(nextHotels)) {
+      addActivityLog({
+        action: "Hotel Deleted",
+        category: "Hotel",
+        description: `${hotel.name} was deleted from Stayora.`,
+        target: hotel.id,
+      });
+
       setNotice(`${hotel.name} is now ${nextStatus.toLowerCase()}.`);
     }
   };

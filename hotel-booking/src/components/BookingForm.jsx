@@ -27,13 +27,37 @@ const roomTypes = [
   },
 ];
 
-function getLocalDateString() {
-  const date = new Date();
+function getLocalDateString(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function getNextDateString(dateString) {
+  const date = new Date(`${dateString}T00:00:00`);
+  date.setDate(date.getDate() + 1);
+  return getLocalDateString(date);
+}
+
+function calculateNights(checkIn, checkOut) {
+  if (!checkIn || !checkOut) return 0;
+
+  const start = new Date(`${checkIn}T00:00:00`);
+  const end = new Date(`${checkOut}T00:00:00`);
+
+  return Math.round((end - start) / (1000 * 60 * 60 * 24));
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "";
+
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString("en-NP", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function BookingForm({ hotel }) {
@@ -43,33 +67,52 @@ function BookingForm({ hotel }) {
   const [roomId, setRoomId] = useState("standard");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const today = getLocalDateString();
 
   const selectedRoom =
     roomTypes.find((room) => room.id === roomId) || roomTypes[0];
 
   const basePrice = Number(hotel?.price) || 0;
-
   const price = Math.round(basePrice * selectedRoom.multiplier);
 
-  const nights =
-    checkIn && checkOut
-      ? Math.round(
-          (new Date(`${checkOut}T00:00:00`) - new Date(`${checkIn}T00:00:00`)) /
-            (1000 * 60 * 60 * 24),
-        )
-      : 0;
+  const nights = calculateNights(checkIn, checkOut);
+  const hasValidDates = Boolean(checkIn && checkOut && nights > 0);
 
-  const total = Math.max(0, nights) * price;
+  const total = hasValidDates ? nights * price : 0;
+
+  const minimumCheckOut = getNextDateString(
+    checkIn && checkIn >= today ? checkIn : today,
+  );
+
+  function handleCheckInChange(value) {
+    setCheckIn(value);
+    setMessage("");
+
+    if (checkOut && value >= checkOut) {
+      setCheckOut("");
+    }
+  }
 
   function handleBooking(event) {
     event.preventDefault();
     setMessage("");
 
-    if (!hotel?.id || !hotel?.name) {
+    if (!hotel?.id && hotel?.id !== 0) {
       setMessage("Hotel information is unavailable. Please try again.");
+      return;
+    }
+
+    if (!hotel?.name) {
+      setMessage("Hotel information is unavailable. Please try again.");
+      return;
+    }
+
+    if (!user?.email) {
+      navigate("/login");
       return;
     }
 
@@ -84,7 +127,7 @@ function BookingForm({ hotel }) {
     }
 
     if (nights <= 0) {
-      setMessage("Check-out must be after check-in.");
+      setMessage("Check-out must be at least one day after check-in.");
       return;
     }
 
@@ -95,7 +138,12 @@ function BookingForm({ hotel }) {
       return;
     }
 
-    if (price <= 0 || !Number.isFinite(total)) {
+    if (
+      !Number.isFinite(price) ||
+      price <= 0 ||
+      !Number.isFinite(total) ||
+      total <= 0
+    ) {
       setMessage("The booking price is invalid. Please try again.");
       return;
     }
@@ -107,7 +155,8 @@ function BookingForm({ hotel }) {
         hotel,
         hotelId: hotel.id,
         hotelName: hotel.name,
-        userEmail: user?.email?.trim().toLowerCase() || "",
+        userName: user.name,
+        userEmail: user.email.trim().toLowerCase(),
         checkIn,
         checkOut,
         guests: Number(guests),
@@ -116,8 +165,6 @@ function BookingForm({ hotel }) {
         price,
         roomType: selectedRoom.name,
         roomCapacity: selectedRoom.capacity,
-
-        // Every new booking awaits admin approval.
         status: "Pending",
         createdAt: new Date().toISOString(),
       });
@@ -154,14 +201,17 @@ function BookingForm({ hotel }) {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
-      <p className="text-sm font-medium text-gray-500">Starting from</p>
+      {/* Price */}
+      <div>
+        <p className="text-sm font-medium text-gray-500">Starting from</p>
 
-      <p className="mt-1 text-3xl font-extrabold text-gray-900">
-        NPR {basePrice.toLocaleString("en-NP")}
-        <span className="text-sm font-normal text-gray-500"> / night</span>
-      </p>
+        <p className="mt-1 text-3xl font-extrabold text-gray-900">
+          NPR {basePrice.toLocaleString("en-NP")}
+          <span className="text-sm font-normal text-gray-500"> / night</span>
+        </p>
+      </div>
 
-      <form onSubmit={handleBooking} className="mt-6 space-y-4">
+      <form onSubmit={handleBooking} className="mt-6 space-y-5">
         {/* Room selection */}
         <div>
           <label
@@ -203,7 +253,7 @@ function BookingForm({ hotel }) {
             htmlFor="checkIn"
             className="mb-2 block text-sm font-semibold text-gray-700"
           >
-            Check-in
+            Check-in date
           </label>
 
           <input
@@ -211,16 +261,7 @@ function BookingForm({ hotel }) {
             type="date"
             min={today}
             value={checkIn}
-            onChange={(event) => {
-              const value = event.target.value;
-
-              setCheckIn(value);
-              setMessage("");
-
-              if (checkOut && value >= checkOut) {
-                setCheckOut("");
-              }
-            }}
+            onChange={(event) => handleCheckInChange(event.target.value)}
             required
             className="w-full rounded-xl border border-gray-300 p-3 outline-none focus:border-emerald-600"
           />
@@ -232,13 +273,13 @@ function BookingForm({ hotel }) {
             htmlFor="checkOut"
             className="mb-2 block text-sm font-semibold text-gray-700"
           >
-            Check-out
+            Check-out date
           </label>
 
           <input
             id="checkOut"
             type="date"
-            min={checkIn ? (checkIn >= today ? checkIn : today) : today}
+            min={minimumCheckOut}
             value={checkOut}
             onChange={(event) => {
               setCheckOut(event.target.value);
@@ -247,6 +288,10 @@ function BookingForm({ hotel }) {
             required
             className="w-full rounded-xl border border-gray-300 p-3 outline-none focus:border-emerald-600"
           />
+
+          <p className="mt-1 text-xs text-gray-500">
+            Check-out must be at least one day after check-in.
+          </p>
         </div>
 
         {/* Guests */}
@@ -255,7 +300,7 @@ function BookingForm({ hotel }) {
             htmlFor="guests"
             className="mb-2 block text-sm font-semibold text-gray-700"
           >
-            Guests
+            Number of guests
           </label>
 
           <select
@@ -283,53 +328,94 @@ function BookingForm({ hotel }) {
         </div>
 
         {/* Booking summary */}
-        {nights > 0 && (
-          <div className="rounded-xl bg-emerald-50 p-4">
-            <p className="mb-3 text-sm font-semibold text-emerald-900">
-              Booking summary
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <h3 className="mb-3 font-bold text-gray-900">Your booking summary</h3>
+
+          {hasValidDates ? (
+            <>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Check-in</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatDate(checkIn)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Check-out</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatDate(checkOut)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Room</span>
+                  <span className="font-semibold text-gray-900">
+                    {selectedRoom.name}
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Guests</span>
+                  <span className="font-semibold text-gray-900">
+                    {guests} {Number(guests) === 1 ? "Guest" : "Guests"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Duration</span>
+                  <span className="font-semibold text-gray-900">
+                    {nights} {nights === 1 ? "Night" : "Nights"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-gray-200 pt-4">
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-gray-500">
+                    NPR {price.toLocaleString("en-NP")} × {nights} nights
+                  </span>
+
+                  <span className="font-semibold text-gray-900">
+                    NPR {total.toLocaleString("en-NP")}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex justify-between gap-3">
+                  <span className="font-bold text-gray-900">Total amount</span>
+
+                  <span className="text-xl font-extrabold text-emerald-700">
+                    NPR {total.toLocaleString("en-NP")}
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm leading-6 text-gray-500">
+              Select your check-in and check-out dates to see your booking
+              details and total price.
             </p>
+          )}
+        </div>
 
-            <div className="flex justify-between gap-3 text-sm text-gray-600">
-              <span>Room</span>
-              <span className="text-right font-medium text-gray-900">
-                {selectedRoom.name}
-              </span>
-            </div>
-
-            <div className="mt-2 flex justify-between gap-3 text-sm text-gray-600">
-              <span>
-                NPR {price.toLocaleString("en-NP")} × {nights} night(s)
-              </span>
-              <span className="font-semibold text-gray-900">
-                NPR {total.toLocaleString("en-NP")}
-              </span>
-            </div>
-
-            <div className="mt-3 flex justify-between border-t border-emerald-200 pt-3">
-              <span className="font-bold text-gray-900">Total</span>
-              <span className="text-lg font-extrabold text-emerald-700">
-                NPR {total.toLocaleString("en-NP")}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Approval information */}
+        {/* Admin approval */}
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <p className="font-semibold text-amber-900">
             Admin approval required
           </p>
-          <p className="mt-1 text-sm text-amber-800">
+
+          <p className="mt-1 text-sm leading-6 text-amber-800">
             Your booking request will remain pending until the admin accepts or
             rejects it. Submitting this request does not guarantee room
             availability.
           </p>
         </div>
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-emerald-700 px-5 py-3.5 font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Submitting..." : "Submit Booking Request"}
         </button>
@@ -337,7 +423,7 @@ function BookingForm({ hotel }) {
         {message && (
           <p
             role="alert"
-            className="rounded-xl bg-gray-100 p-3 text-sm font-medium text-gray-700"
+            className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700"
           >
             {message}
           </p>

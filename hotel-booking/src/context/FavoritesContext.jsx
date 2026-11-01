@@ -1,31 +1,64 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
+import { useAuth } from "./AuthContext";
+
 const FavoritesContext = createContext(null);
 
-export function FavoritesProvider({ children }) {
-  const [favoriteIds, setFavoriteIds] = useState(() => {
-    try {
-      const saved = localStorage.getItem("stayora-favorites");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+function getWishlistKey(user) {
+  return user?.email
+    ? `stayora-favorites-${user.email.trim().toLowerCase()}`
+    : null;
+}
 
+function readFavorites(key) {
+  if (!key) return [];
+
+  try {
+    const saved = localStorage.getItem(key);
+    const parsed = saved ? JSON.parse(saved) : [];
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function FavoritesProvider({ children }) {
+  const { user } = useAuth();
+
+  const wishlistKey = getWishlistKey(user);
+
+  const [favoriteIds, setFavoriteIds] = useState(() =>
+    readFavorites(wishlistKey),
+  );
+
+  const [loadedKey, setLoadedKey] = useState(wishlistKey);
+
+  // Load the correct wishlist when the account changes.
   useEffect(() => {
-    localStorage.setItem("stayora-favorites", JSON.stringify(favoriteIds));
-  }, [favoriteIds]);
+    setFavoriteIds(readFavorites(wishlistKey));
+    setLoadedKey(wishlistKey);
+  }, [wishlistKey]);
+
+  // Save favorites for the current account.
+  useEffect(() => {
+    if (!wishlistKey || loadedKey !== wishlistKey) return;
+
+    localStorage.setItem(wishlistKey, JSON.stringify(favoriteIds));
+  }, [favoriteIds, wishlistKey, loadedKey]);
 
   function toggleFavorite(hotelId) {
+    if (!user) return;
+
     setFavoriteIds((currentIds) =>
-      currentIds.includes(hotelId)
-        ? currentIds.filter((id) => id !== hotelId)
+      currentIds.some((id) => String(id) === String(hotelId))
+        ? currentIds.filter((id) => String(id) !== String(hotelId))
         : [...currentIds, hotelId],
     );
   }
 
   function isFavorite(hotelId) {
-    return favoriteIds.includes(hotelId);
+    return favoriteIds.some((id) => String(id) === String(hotelId));
   }
 
   return (
