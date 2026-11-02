@@ -1,4 +1,10 @@
-function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
+function HotelSearchFilters({
+  filters,
+  setFilters,
+  locations,
+  categories,
+  maxPrice,
+}) {
   function updateFilter(name, value) {
     setFilters((current) => ({
       ...current,
@@ -10,6 +16,8 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
     setFilters({
       search: "",
       location: "All locations",
+      category: "All categories",
+      minRating: 0,
       maxPrice,
       sortBy: "recommended",
     });
@@ -21,12 +29,13 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
         <h2 className="text-xl font-bold text-gray-900">
           Find your perfect stay
         </h2>
+
         <p className="mt-1 text-sm text-gray-500">
           Search, filter, and discover your next destination.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {/* Search */}
         <div>
           <label
@@ -35,8 +44,10 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
           >
             Search hotels
           </label>
+
           <div className="flex items-center gap-2 rounded-xl border border-gray-300 px-3 focus-within:border-emerald-600">
-            <span className="text-gray-400">⌕</span>
+            <span className="text-xl text-gray-400">⌕</span>
+
             <input
               id="hotelSearch"
               type="search"
@@ -56,6 +67,7 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
           >
             Location
           </label>
+
           <select
             id="hotelLocation"
             value={filters.location}
@@ -63,6 +75,7 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
             className="w-full rounded-xl border border-gray-300 bg-white p-3 text-sm outline-none focus:border-emerald-600"
           >
             <option value="All locations">All locations</option>
+
             {locations.map((location) => (
               <option key={location} value={location}>
                 {location}
@@ -71,7 +84,32 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
           </select>
         </div>
 
-        {/* Price */}
+        {/* Category */}
+        <div>
+          <label
+            htmlFor="hotelCategory"
+            className="mb-2 block text-sm font-semibold text-gray-700"
+          >
+            Hotel category
+          </label>
+
+          <select
+            id="hotelCategory"
+            value={filters.category}
+            onChange={(event) => updateFilter("category", event.target.value)}
+            className="w-full rounded-xl border border-gray-300 bg-white p-3 text-sm outline-none focus:border-emerald-600"
+          >
+            <option value="All categories">All categories</option>
+
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Maximum price */}
         <div>
           <div className="mb-2 flex items-center justify-between gap-2">
             <label
@@ -80,15 +118,17 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
             >
               Maximum price
             </label>
+
             <span className="text-sm font-bold text-emerald-700">
-              NPR {Number(filters.maxPrice).toLocaleString("en-IN")}
+              NPR {Number(filters.maxPrice).toLocaleString("en-NP")}
             </span>
           </div>
+
           <input
             id="maxHotelPrice"
             type="range"
             min="0"
-            max={maxPrice}
+            max={Math.max(maxPrice, 1)}
             step="500"
             value={filters.maxPrice}
             onChange={(event) =>
@@ -96,10 +136,36 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
             }
             className="mt-3 w-full accent-emerald-700"
           />
+
           <div className="mt-1 flex justify-between text-xs text-gray-500">
             <span>NPR 0</span>
-            <span>NPR {Number(maxPrice).toLocaleString("en-IN")}</span>
+            <span>NPR {Number(maxPrice).toLocaleString("en-NP")}</span>
           </div>
+        </div>
+
+        {/* Minimum rating */}
+        <div>
+          <label
+            htmlFor="hotelRating"
+            className="mb-2 block text-sm font-semibold text-gray-700"
+          >
+            Minimum rating
+          </label>
+
+          <select
+            id="hotelRating"
+            value={filters.minRating}
+            onChange={(event) =>
+              updateFilter("minRating", Number(event.target.value))
+            }
+            className="w-full rounded-xl border border-gray-300 bg-white p-3 text-sm outline-none focus:border-emerald-600"
+          >
+            <option value={0}>Any rating</option>
+            <option value={3}>3+ stars</option>
+            <option value={3.5}>3.5+ stars</option>
+            <option value={4}>4+ stars</option>
+            <option value={4.5}>4.5+ stars</option>
+          </select>
         </div>
 
         {/* Sorting */}
@@ -110,6 +176,7 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
           >
             Sort hotels
           </label>
+
           <select
             id="hotelSort"
             value={filters.sortBy}
@@ -119,18 +186,20 @@ function HotelSearchFilters({ filters, setFilters, locations, maxPrice }) {
             <option value="recommended">Recommended</option>
             <option value="price-low">Price: Low to high</option>
             <option value="price-high">Price: High to low</option>
+            <option value="rating-high">Rating: High to low</option>
             <option value="name">Name: A to Z</option>
           </select>
         </div>
       </div>
 
-      <div className="mt-5 flex justify-end">
+      {/* Reset */}
+      <div className="mt-6 flex justify-end">
         <button
           type="button"
           onClick={resetFilters}
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+          className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
         >
-          Reset filters
+          Reset all filters
         </button>
       </div>
     </section>

@@ -11,13 +11,15 @@ import hotels from "../data/hotels";
 import { getStoredHotels, subscribeToHotelChanges } from "../data/hotelStorage";
 
 function Home() {
-  // Load hotels managed by the admin panel.
+  // Load hotels.
   const [allHotels, setAllHotels] = useState(() => getStoredHotels(hotels));
 
   // Search and filter states.
   const [filters, setFilters] = useState({
     search: "",
     location: "All locations",
+    category: "All categories",
+    minRating: 0,
     maxPrice: 0,
     sortBy: "recommended",
   });
@@ -31,17 +33,19 @@ function Home() {
       setAllHotels(getStoredHotels(hotels));
     }
 
+    refreshHotels();
+
     return subscribeToHotelChanges(refreshHotels);
   }, []);
 
-  // Only active hotels should be visible to customers.
+  // Only active hotels appear to customers.
   const availableHotels = useMemo(() => {
     return allHotels.filter(
       (hotel) => hotel.status?.toLowerCase() !== "inactive",
     );
   }, [allHotels]);
 
-  // Update the maximum price whenever the available hotels change.
+  // Calculate highest hotel price.
   const maxPrice = useMemo(() => {
     return Math.max(
       0,
@@ -49,7 +53,7 @@ function Home() {
     );
   }, [availableHotels]);
 
-  // Update the price filter if a newly added hotel costs more.
+  // Update maximum price when hotels change.
   useEffect(() => {
     setFilters((previousFilters) => ({
       ...previousFilters,
@@ -60,27 +64,41 @@ function Home() {
     }));
   }, [maxPrice]);
 
-  // Get unique hotel locations for the location dropdown.
+  // Unique locations.
   const locations = useMemo(() => {
     return [
       ...new Set(
-        availableHotels.map((hotel) => {
-          const location = (hotel.location || "").trim();
-          const parts = location.split(",");
+        availableHotels
+          .map((hotel) => {
+            const location = (hotel.location || "").trim();
+            const parts = location.split(",");
 
-          if (parts.length > 1 && parts[parts.length - 1].trim() === "Nepal") {
-            return parts[0].trim();
-          }
+            if (
+              parts.length > 1 &&
+              parts[parts.length - 1].trim() === "Nepal"
+            ) {
+              return parts[0].trim();
+            }
 
-          return parts.length > 1 ? parts[parts.length - 1].trim() : location;
-        }),
+            return parts.length > 1 ? parts[parts.length - 1].trim() : location;
+          })
+          .filter(Boolean),
       ),
-    ]
-      .filter(Boolean)
-      .sort();
+    ].sort();
   }, [availableHotels]);
 
-  // Search, filter, and sort hotels.
+  // Unique hotel categories.
+  const categories = useMemo(() => {
+    return [
+      ...new Set(
+        availableHotels
+          .map((hotel) => (hotel.category || "").trim())
+          .filter(Boolean),
+      ),
+    ].sort();
+  }, [availableHotels]);
+
+  // Search, filter and sort hotels.
   const filteredHotels = useMemo(() => {
     const searchText = filters.search.trim().toLowerCase();
     const destinationText = heroDestination.trim().toLowerCase();
@@ -89,22 +107,26 @@ function Home() {
       const name = (hotel.name || "").toLowerCase();
       const location = (hotel.location || "").toLowerCase();
       const category = (hotel.category || "").toLowerCase();
-      const price = Number(hotel.price) || 0;
 
+      const price = Number(hotel.price) || 0;
+      const rating = Number(hotel.rating) || 0;
+
+      // Search filter.
       const matchesSearch =
         !searchText ||
         name.includes(searchText) ||
         location.includes(searchText) ||
         category.includes(searchText);
 
+      // Hero destination search.
       const matchesHero =
         !destinationText ||
         name.includes(destinationText) ||
         location.includes(destinationText) ||
         category.includes(destinationText);
 
+      // Location filter.
       const primaryLocation = location.split(",")[0].trim();
-
       const selectedLocation = filters.location.toLowerCase();
 
       const matchesLocation =
@@ -112,15 +134,34 @@ function Home() {
         primaryLocation === selectedLocation ||
         location.includes(selectedLocation);
 
+      // Category filter.
+      const matchesCategory =
+        filters.category === "All categories" ||
+        category === filters.category.toLowerCase();
+
+      // Price filter.
       const matchesPrice = price <= Number(filters.maxPrice);
 
-      return matchesSearch && matchesHero && matchesLocation && matchesPrice;
+      // Rating filter.
+      const matchesRating = rating >= Number(filters.minRating || 0);
+
+      return (
+        matchesSearch &&
+        matchesHero &&
+        matchesLocation &&
+        matchesCategory &&
+        matchesPrice &&
+        matchesRating
+      );
     });
 
+    // Sorting.
     if (filters.sortBy === "price-low") {
-      results.sort((a, b) => Number(a.price) - Number(b.price));
+      results.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
     } else if (filters.sortBy === "price-high") {
-      results.sort((a, b) => Number(b.price) - Number(a.price));
+      results.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+    } else if (filters.sortBy === "rating-high") {
+      results.sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
     } else if (filters.sortBy === "name") {
       results.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     }
@@ -128,7 +169,7 @@ function Home() {
     return results;
   }, [availableHotels, filters, heroDestination]);
 
-  // Handle search from the hero section.
+  // Search from Hero.
   function handleHeroSearch({ destination = "" } = {}) {
     setHeroDestination(destination);
     setHasSearched(true);
@@ -138,11 +179,13 @@ function Home() {
     });
   }
 
-  // Reset all search filters.
+  // Reset every filter.
   function handleReset() {
     setFilters({
       search: "",
       location: "All locations",
+      category: "All categories",
+      minRating: 0,
       maxPrice,
       sortBy: "recommended",
     });
@@ -163,6 +206,7 @@ function Home() {
             filters={filters}
             setFilters={setFilters}
             locations={locations}
+            categories={categories}
             maxPrice={maxPrice}
           />
 
@@ -184,15 +228,15 @@ function Home() {
                 </h3>
 
                 <p className="mt-2 text-sm text-gray-500">
-                  Try another search or reset your filters.
+                  Try changing your search, category, rating or price filters.
                 </p>
 
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="mt-5 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-800"
+                  className="mt-5 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
                 >
-                  Reset filters
+                  Reset all filters
                 </button>
               </div>
             )}

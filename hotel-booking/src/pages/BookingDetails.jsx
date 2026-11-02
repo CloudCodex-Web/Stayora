@@ -252,29 +252,6 @@ function BookingDetails() {
             </span>
           </div>
 
-          <div className="mt-5 flex items-start gap-3 rounded-xl bg-emerald-50 p-4">
-            <CheckCircle2
-              size={21}
-              className="mt-0.5 shrink-0 text-emerald-700"
-            />
-
-            <div>
-              <p className="font-bold text-emerald-900">Booking information</p>
-
-              <p className="mt-1 text-sm leading-6 text-emerald-800">
-                {status === "Pending"
-                  ? "Your booking request is waiting for admin approval."
-                  : status === "Accepted"
-                    ? "Your booking request has been accepted by the admin."
-                    : status === "Rejected"
-                      ? "Your booking request was rejected."
-                      : status === "Cancelled"
-                        ? "This booking has been cancelled."
-                        : "Check My Bookings for the latest booking status."}
-              </p>
-            </div>
-          </div>
-
           {booking.createdAt && (
             <p className="mt-4 text-xs text-gray-400">
               Submitted on:{" "}
