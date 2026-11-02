@@ -1,9 +1,8 @@
-import hotels from "../data/hotels";
 import HotelCard from "./HotelCard";
 
 const FeaturedHotel = ({ hotels, hasSearched }) => {
   return (
-    <section id="hotels" className="bg-white px-5 py-16">
+    <section className="bg-white px-5 py-8">
       <div className="mx-auto max-w-7xl">
         <h2 className="mb-3 text-3xl font-bold">
           {hasSearched ? "Search Results" : "Featured Hotels"}
