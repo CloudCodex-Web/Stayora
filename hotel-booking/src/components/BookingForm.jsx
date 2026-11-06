@@ -1,31 +1,12 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { saveBooking } from "../utils/bookings";
+import {
+  saveBooking,
+  getBookings,
+  subscribeToBookingChanges,
+} from "../utils/bookings";
+import { getRooms, subscribeToRoomChanges } from "../utils/rooms";
 import { useAuth } from "../context/AuthContext";
-
-const roomTypes = [
-  {
-    id: "standard",
-    name: "Standard Room",
-    capacity: 2,
-    multiplier: 1,
-    description: "A comfortable room for solo travelers or couples.",
-  },
-  {
-    id: "deluxe",
-    name: "Deluxe Room",
-    capacity: 3,
-    multiplier: 1.35,
-    description: "Extra space and comfort for a relaxing stay.",
-  },
-  {
-    id: "family",
-    name: "Family Room",
-    capacity: 6,
-    multiplier: 1.7,
-    description: "A spacious option for families and groups.",
-  },
-];
 
 function getLocalDateString(date = new Date()) {
   const year = date.getFullYear();
@@ -60,11 +41,21 @@ function formatDate(dateString) {
   });
 }
 
+// Check whether two booking periods overlap.
+// Check-out is exclusive, so one guest can check out
+// on the same date another guest checks in.
+function datesOverlap(startA, endA, startB, endB) {
+  return startA < endB && endA > startB;
+}
+
 function BookingForm({ hotel }) {
+  const [rooms, setRooms] = useState(() => getRooms());
+  const [bookings, setBookings] = useState(() => getBookings());
+
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
-  const [roomId, setRoomId] = useState("standard");
+  const [roomId, setRoomId] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -73,16 +64,77 @@ function BookingForm({ hotel }) {
 
   const today = getLocalDateString();
 
-  const selectedRoom =
-    roomTypes.find((room) => room.id === roomId) || roomTypes[0];
+  useEffect(() => {
+    const refreshRooms = () => setRooms(getRooms());
+    const refreshBookings = () => setBookings(getBookings());
 
-  const basePrice = Number(hotel?.price) || 0;
-  const price = Math.round(basePrice * selectedRoom.multiplier);
+    refreshRooms();
+    refreshBookings();
+
+    const unsubscribeRooms = subscribeToRoomChanges(refreshRooms);
+    const unsubscribeBookings = subscribeToBookingChanges(refreshBookings);
+
+    return () => {
+      unsubscribeRooms();
+      unsubscribeBookings();
+    };
+  }, []);
+
+  // Only include rooms belonging to this hotel.
+  const hotelRooms = useMemo(() => {
+    return rooms.filter(
+      (room) =>
+        String(room.hotelId) === String(hotel?.id) &&
+        room.status === "Available",
+    );
+  }, [rooms, hotel?.id]);
+  console.log("Booking hotel:", hotel);
+  console.log("All saved rooms:", rooms);
+  console.log("Matching hotel rooms:", hotelRooms);
+
+  // A room is unavailable when a pending or accepted booking
+  // overlaps the selected dates.
+  const availableRooms = useMemo(() => {
+    if (!checkIn || !checkOut || calculateNights(checkIn, checkOut) <= 0) {
+      return hotelRooms;
+    }
+
+    return hotelRooms.filter((room) => {
+      const hasConflict = bookings.some((booking) => {
+        const sameRoom = String(booking.roomId) === String(room.id);
+
+        const activeBooking = ["Pending", "Accepted"].includes(booking.status);
+
+        if (!sameRoom || !activeBooking) return false;
+
+        return datesOverlap(
+          checkIn,
+          checkOut,
+          booking.checkIn,
+          booking.checkOut,
+        );
+      });
+
+      return !hasConflict;
+    });
+  }, [hotelRooms, bookings, checkIn, checkOut]);
+
+  // Keep the selected room valid when availability changes.
+  useEffect(() => {
+    if (!availableRooms.some((room) => String(room.id) === String(roomId))) {
+      setRoomId(availableRooms[0] ? String(availableRooms[0].id) : "");
+    }
+  }, [availableRooms, roomId]);
+
+  const selectedRoom =
+    availableRooms.find((room) => String(room.id) === String(roomId)) || null;
+
+  const price = Number(selectedRoom?.price) || 0;
+  const capacity = Number(selectedRoom?.capacity) || 1;
 
   const nights = calculateNights(checkIn, checkOut);
   const hasValidDates = Boolean(checkIn && checkOut && nights > 0);
-
-  const total = hasValidDates ? nights * price : 0;
+  const total = hasValidDates && selectedRoom ? nights * price : 0;
 
   const minimumCheckOut = getNextDateString(
     checkIn && checkIn >= today ? checkIn : today,
@@ -131,10 +183,22 @@ function BookingForm({ hotel }) {
       return;
     }
 
-    if (Number(guests) < 1 || Number(guests) > selectedRoom.capacity) {
+    if (!selectedRoom) {
       setMessage(
-        `This room accommodates 1 to ${selectedRoom.capacity} guests.`,
+        "No available rooms for these dates. Please choose other dates.",
       );
+      return;
+    }
+
+    if (!availableRooms.some((room) => String(room.id) === String(roomId))) {
+      setMessage(
+        "This room is no longer available. Please select another room.",
+      );
+      return;
+    }
+
+    if (Number(guests) < 1 || Number(guests) > capacity) {
+      setMessage(`This room accommodates 1 to ${capacity} guests.`);
       return;
     }
 
@@ -144,7 +208,35 @@ function BookingForm({ hotel }) {
       !Number.isFinite(total) ||
       total <= 0
     ) {
-      setMessage("The booking price is invalid. Please try again.");
+      setMessage("The room price is invalid. Please contact the property.");
+      return;
+    }
+
+    // Recheck availability immediately before saving.
+    const latestRooms = getRooms();
+    const latestBookings = getBookings();
+
+    const roomStillAvailable = latestRooms.some(
+      (room) =>
+        String(room.id) === String(roomId) &&
+        String(room.hotelId) === String(hotel.id) &&
+        room.status === "Available",
+    );
+
+    const hasLatestConflict = latestBookings.some((booking) => {
+      return (
+        String(booking.roomId) === String(roomId) &&
+        ["Pending", "Accepted"].includes(booking.status) &&
+        datesOverlap(checkIn, checkOut, booking.checkIn, booking.checkOut)
+      );
+    });
+
+    if (!roomStillAvailable || hasLatestConflict) {
+      setRooms(latestRooms);
+      setBookings(latestBookings);
+      setMessage(
+        "Sorry, this room has just become unavailable. Please select another room or date.",
+      );
       return;
     }
 
@@ -155,16 +247,21 @@ function BookingForm({ hotel }) {
         hotel,
         hotelId: hotel.id,
         hotelName: hotel.name,
+
+        roomId: selectedRoom.id,
+        roomNumber: selectedRoom.roomNumber,
+        roomType: selectedRoom.roomType,
+        roomCapacity: capacity,
+
         userName: user.name,
         userEmail: user.email.trim().toLowerCase(),
+
         checkIn,
         checkOut,
         guests: Number(guests),
         nights,
         total,
         price,
-        roomType: selectedRoom.name,
-        roomCapacity: selectedRoom.capacity,
         status: "Pending",
         createdAt: new Date().toISOString(),
       });
@@ -186,67 +283,21 @@ function BookingForm({ hotel }) {
     }
   }
 
-  function handleRoomChange(event) {
-    const nextRoom =
-      roomTypes.find((room) => room.id === event.target.value) || roomTypes[0];
-
-    setRoomId(nextRoom.id);
-
-    if (Number(guests) > nextRoom.capacity) {
-      setGuests(String(nextRoom.capacity));
-    }
-
-    setMessage("");
-  }
-
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
       {/* Price */}
       <div>
-        <p className="text-sm font-medium text-gray-500">Starting from</p>
+        <p className="text-sm font-medium text-gray-500">
+          Room prices starting from
+        </p>
 
         <p className="mt-1 text-3xl font-extrabold text-gray-900">
-          NPR {basePrice.toLocaleString("en-NP")}
+          NPR {Number(hotel?.price || 0).toLocaleString("en-NP")}
           <span className="text-sm font-normal text-gray-500"> / night</span>
         </p>
       </div>
 
       <form onSubmit={handleBooking} className="mt-6 space-y-5">
-        {/* Room selection */}
-        <div>
-          <label
-            htmlFor="roomType"
-            className="mb-2 block text-sm font-semibold text-gray-700"
-          >
-            Choose your room
-          </label>
-
-          <select
-            id="roomType"
-            value={roomId}
-            onChange={handleRoomChange}
-            className="w-full rounded-xl border border-gray-300 bg-white p-3 outline-none focus:border-emerald-600"
-          >
-            {roomTypes.map((room) => (
-              <option key={room.id} value={room.id}>
-                {room.name} — up to {room.capacity} guests
-              </option>
-            ))}
-          </select>
-
-          <p className="mt-2 text-sm text-gray-500">
-            {selectedRoom.description}
-          </p>
-
-          <p className="mt-2 font-bold text-emerald-700">
-            NPR {price.toLocaleString("en-NP")} / night
-          </p>
-
-          <p className="mt-1 text-xs text-gray-500">
-            Demo pricing. Actual room availability is not verified.
-          </p>
-        </div>
-
         {/* Check-in */}
         <div>
           <label
@@ -294,6 +345,75 @@ function BookingForm({ hotel }) {
           </p>
         </div>
 
+        {/* Room selection */}
+        <div>
+          <label
+            htmlFor="roomId"
+            className="mb-2 block text-sm font-semibold text-gray-700"
+          >
+            Choose your room
+          </label>
+
+          {availableRooms.length > 0 ? (
+            <select
+              id="roomId"
+              value={roomId}
+              onChange={(event) => {
+                setRoomId(event.target.value);
+                setMessage("");
+              }}
+              className="w-full rounded-xl border border-gray-300 bg-white p-3 outline-none focus:border-emerald-600"
+            >
+              {availableRooms.map((room) => (
+                <option key={room.id} value={String(room.id)}>
+                  Room {room.roomNumber} — {room.roomType}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+              {hotelRooms.length === 0
+                ? "No available rooms have been added to this hotel yet."
+                : hasValidDates
+                  ? "No rooms are available for your selected dates. Try different dates."
+                  : "There are currently no available rooms at this hotel."}
+            </div>
+          )}
+
+          {selectedRoom && (
+            <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-bold text-gray-900">
+                    {selectedRoom.roomType}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Room {selectedRoom.roomNumber}
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                  Available
+                </span>
+              </div>
+
+              <p className="mt-3 text-sm text-gray-600">
+                Maximum capacity: {capacity} guests
+              </p>
+
+              {selectedRoom.description && (
+                <p className="mt-2 text-sm text-gray-500">
+                  {selectedRoom.description}
+                </p>
+              )}
+
+              <p className="mt-3 font-bold text-emerald-700">
+                NPR {price.toLocaleString("en-NP")} / night
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Guests */}
         <div>
           <label
@@ -306,24 +426,26 @@ function BookingForm({ hotel }) {
           <select
             id="guests"
             value={guests}
+            disabled={!selectedRoom}
             onChange={(event) => {
               setGuests(event.target.value);
               setMessage("");
             }}
-            className="w-full rounded-xl border border-gray-300 bg-white p-3 outline-none focus:border-emerald-600"
+            className="w-full rounded-xl border border-gray-300 bg-white p-3 outline-none focus:border-emerald-600 disabled:bg-gray-100"
           >
-            {Array.from(
-              { length: selectedRoom.capacity },
-              (_, index) => index + 1,
-            ).map((count) => (
-              <option key={count} value={String(count)}>
-                {count} {count === 1 ? "Guest" : "Guests"}
-              </option>
-            ))}
+            {Array.from({ length: capacity }, (_, index) => index + 1).map(
+              (count) => (
+                <option key={count} value={String(count)}>
+                  {count} {count === 1 ? "Guest" : "Guests"}
+                </option>
+              ),
+            )}
           </select>
 
           <p className="mt-1 text-xs text-gray-500">
-            Maximum capacity: {selectedRoom.capacity} guests
+            {selectedRoom
+              ? `Maximum capacity: ${capacity} guests`
+              : "Select an available room first."}
           </p>
         </div>
 
@@ -331,7 +453,7 @@ function BookingForm({ hotel }) {
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
           <h3 className="mb-3 font-bold text-gray-900">Your booking summary</h3>
 
-          {hasValidDates ? (
+          {hasValidDates && selectedRoom ? (
             <>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between gap-3">
@@ -351,7 +473,7 @@ function BookingForm({ hotel }) {
                 <div className="flex justify-between gap-3">
                   <span className="text-gray-500">Room</span>
                   <span className="font-semibold text-gray-900">
-                    {selectedRoom.name}
+                    {selectedRoom.roomNumber} — {selectedRoom.roomType}
                   </span>
                 </div>
 
@@ -392,7 +514,7 @@ function BookingForm({ hotel }) {
             </>
           ) : (
             <p className="text-sm leading-6 text-gray-500">
-              Select your check-in and check-out dates to see your booking
+              Select your dates and an available room to see your booking
               details and total price.
             </p>
           )}
@@ -406,15 +528,14 @@ function BookingForm({ hotel }) {
 
           <p className="mt-1 text-sm leading-6 text-amber-800">
             Your booking request will remain pending until the admin accepts or
-            rejects it. Submitting this request does not guarantee room
-            availability.
+            rejects it.
           </p>
         </div>
 
         {/* Submit */}
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !selectedRoom || !hasValidDates}
           className="w-full rounded-xl bg-emerald-700 px-5 py-3.5 font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Submitting..." : "Submit Booking Request"}

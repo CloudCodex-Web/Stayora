@@ -7,6 +7,10 @@ import {
   Hotel,
   Download,
   TrendingUp,
+  Clock3,
+  CheckCircle2,
+  XCircle,
+  Ban,
 } from "lucide-react";
 
 import { getBookings, subscribeToBookingChanges } from "../../utils/bookings";
@@ -23,6 +27,9 @@ const getDate = (booking) => {
 
 const isAccepted = (booking) =>
   booking.status === "Accepted" || booking.status === "Confirmed";
+
+const inputStyle =
+  "mt-2 w-full rounded-xl border border-white/10 bg-[#11101c] px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-violet-500";
 
 function AdminReports() {
   const [bookings, setBookings] = useState(getBookings);
@@ -44,7 +51,7 @@ function AdminReports() {
     start.setHours(0, 0, 0, 0);
 
     if (dateRange === "today") {
-      // Keep today's start date.
+      // Today's start date is already set.
     } else if (dateRange === "7") {
       start.setDate(start.getDate() - 6);
     } else if (dateRange === "30") {
@@ -55,6 +62,7 @@ function AdminReports() {
 
     return bookings.filter((booking) => {
       const created = getDate(booking);
+
       if (!created) return false;
 
       if (dateRange === "all") return true;
@@ -78,17 +86,20 @@ function AdminReports() {
   }, [bookings, dateRange, startDate, endDate]);
 
   const accepted = filteredBookings.filter(isAccepted);
+
   const pending = filteredBookings.filter(
     (booking) => booking.status === "Pending",
   );
+
   const rejected = filteredBookings.filter(
     (booking) => booking.status === "Rejected",
   );
+
   const cancelled = filteredBookings.filter(
     (booking) => booking.status === "Cancelled",
   );
 
-  // This is estimated booking revenue, not verified payment revenue.
+  // Estimated booking revenue, not verified payment revenue.
   const totalRevenue = accepted.reduce(
     (total, booking) => total + Number(booking.total || 0),
     0,
@@ -168,80 +179,129 @@ function AdminReports() {
       label: "Total Bookings",
       value: filteredBookings.length,
       icon: CalendarCheck,
-      color: "bg-blue-50 text-blue-600",
+      iconColor: "text-blue-400",
+      iconBg: "bg-blue-500/10",
+      accent: "from-blue-500 to-cyan-500",
     },
     {
       label: "Accepted Bookings",
       value: accepted.length,
       icon: Hotel,
-      color: "bg-emerald-50 text-emerald-600",
+      iconColor: "text-emerald-400",
+      iconBg: "bg-emerald-500/10",
+      accent: "from-emerald-500 to-teal-500",
     },
     {
       label: "Pending Bookings",
       value: pending.length,
       icon: CalendarDays,
-      color: "bg-amber-50 text-amber-600",
+      iconColor: "text-amber-400",
+      iconBg: "bg-amber-500/10",
+      accent: "from-amber-500 to-orange-500",
     },
     {
       label: "Estimated Revenue",
       value: money(totalRevenue),
       icon: Wallet,
-      color: "bg-purple-50 text-purple-600",
+      iconColor: "text-violet-400",
+      iconBg: "bg-violet-500/10",
+      accent: "from-violet-500 to-purple-500",
     },
   ];
 
   const statusItems = [
-    { label: "Accepted", count: accepted.length, color: "bg-emerald-500" },
-    { label: "Pending", count: pending.length, color: "bg-amber-500" },
-    { label: "Rejected", count: rejected.length, color: "bg-red-500" },
-    { label: "Cancelled", count: cancelled.length, color: "bg-slate-400" },
+    {
+      label: "Accepted",
+      count: accepted.length,
+      color: "bg-emerald-500",
+      textColor: "text-emerald-400",
+      icon: CheckCircle2,
+    },
+    {
+      label: "Pending",
+      count: pending.length,
+      color: "bg-amber-500",
+      textColor: "text-amber-400",
+      icon: Clock3,
+    },
+    {
+      label: "Rejected",
+      count: rejected.length,
+      color: "bg-rose-500",
+      textColor: "text-rose-400",
+      icon: XCircle,
+    },
+    {
+      label: "Cancelled",
+      count: cancelled.length,
+      color: "bg-slate-500",
+      textColor: "text-slate-400",
+      icon: Ban,
+    },
+  ];
+
+  const dateOptions = [
+    ["today", "Today"],
+    ["7", "Last 7 days"],
+    ["30", "Last 30 days"],
+    ["month", "This month"],
+    ["all", "All time"],
+    ["custom", "Custom range"],
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Heading */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen space-y-7 text-slate-200">
+      {/* Header */}
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-indigo-600">Stayora Admin</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">Reports</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Review booking activity and hotel performance.
+          <div className="mb-2 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-violet-400" />
+            <p className="text-sm font-medium text-violet-400">Stayora Admin</p>
+          </div>
+
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            Reports
+          </h1>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Track booking activity, revenue estimates, and hotel performance.
           </p>
         </div>
 
         <button
           onClick={exportCSV}
           disabled={filteredBookings.length === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:from-violet-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Download size={18} />
           Export CSV
         </button>
       </div>
 
-      {/* Date filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <CalendarDays size={19} className="text-indigo-600" />
-          <h2 className="font-semibold text-slate-800">Report Period</h2>
+      {/* Date Filters */}
+      <section className="rounded-2xl border border-white/[0.07] bg-[#191727] p-5 shadow-xl shadow-black/10">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="rounded-xl bg-violet-500/10 p-2.5">
+            <CalendarDays size={19} className="text-violet-400" />
+          </div>
+
+          <div>
+            <h2 className="font-semibold text-white">Report Period</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Choose the date range for your report.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {[
-            ["today", "Today"],
-            ["7", "Last 7 days"],
-            ["30", "Last 30 days"],
-            ["month", "This month"],
-            ["all", "All time"],
-            ["custom", "Custom range"],
-          ].map(([value, label]) => (
+          {dateOptions.map(([value, label]) => (
             <button
               key={value}
               onClick={() => setDateRange(value)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
                 dateRange === value
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "border-violet-500/40 bg-violet-500/15 text-violet-300 shadow-lg shadow-violet-950/10"
+                  : "border-white/[0.06] bg-[#11101c] text-slate-400 hover:border-violet-500/30 hover:bg-violet-500/5 hover:text-white"
               }`}
             >
               {label}
@@ -250,32 +310,32 @@ function AdminReports() {
         </div>
 
         {dateRange === "custom" && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <label className="text-sm text-slate-600">
+          <div className="mt-5 grid gap-4 border-t border-white/[0.06] pt-5 sm:grid-cols-2">
+            <label className="text-sm font-medium text-slate-400">
               Start date
               <input
                 type="date"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-indigo-500"
+                className={inputStyle}
               />
             </label>
 
-            <label className="text-sm text-slate-600">
+            <label className="text-sm font-medium text-slate-400">
               End date
               <input
                 type="date"
                 value={endDate}
                 min={startDate || undefined}
                 onChange={(event) => setEndDate(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-indigo-500"
+                className={inputStyle}
               />
             </label>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Summary cards */}
+      {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -283,18 +343,23 @@ function AdminReports() {
           return (
             <div
               key={stat.label}
-              className="rounded-2xl border border-slate-200 bg-white p-5"
+              className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-[#191727] p-5 shadow-xl shadow-black/10 transition hover:-translate-y-1 hover:border-violet-500/20"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">{stat.label}</p>
-                  <h3 className="mt-2 text-2xl font-bold text-slate-900">
+              <div
+                className={`absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${stat.accent} opacity-70`}
+              />
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-400">{stat.label}</p>
+
+                  <h3 className="mt-3 break-words text-2xl font-bold text-white">
                     {stat.value}
                   </h3>
                 </div>
 
-                <div className={`rounded-xl p-3 ${stat.color}`}>
-                  <Icon size={22} />
+                <div className={`shrink-0 rounded-xl p-3 ${stat.iconBg}`}>
+                  <Icon size={23} className={stat.iconColor} />
                 </div>
               </div>
             </div>
@@ -302,20 +367,24 @@ function AdminReports() {
         })}
       </div>
 
-      {/* Booking status */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-lg font-bold text-slate-900">
-          Booking Status Report
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Status breakdown for the selected period.
-        </p>
+      {/* Booking Status Report */}
+      <section className="rounded-2xl border border-white/[0.07] bg-[#191727] p-5 shadow-xl shadow-black/10">
+        <div>
+          <h2 className="text-lg font-bold text-white">
+            Booking Status Report
+          </h2>
 
-        <div className="mt-5 flex h-4 overflow-hidden rounded-full bg-slate-100">
+          <p className="mt-1 text-sm text-slate-400">
+            Booking distribution for the selected period.
+          </p>
+        </div>
+
+        {/* Status Bar */}
+        <div className="mt-6 flex h-4 overflow-hidden rounded-full bg-[#11101c]">
           {statusItems.map((item) => (
             <div
               key={item.label}
-              className={item.color}
+              className={`${item.color} transition-all duration-500`}
               style={{
                 width: `${
                   filteredBookings.length
@@ -328,69 +397,125 @@ function AdminReports() {
           ))}
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {statusItems.map((item) => (
-            <div key={item.label} className="flex items-center gap-3">
-              <span className={`h-3 w-3 rounded-full ${item.color}`} />
-              <div>
-                <p className="text-sm text-slate-500">{item.label}</p>
-                <p className="font-bold text-slate-800">{item.count}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+        {/* Status Details */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {statusItems.map((item) => {
+            const Icon = item.icon;
 
-      {/* Hotel performance */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="flex items-center gap-2 border-b border-slate-100 p-5">
-          <TrendingUp size={20} className="text-indigo-600" />
-          <div>
-            <h2 className="font-bold text-slate-900">Hotel Performance</h2>
-            <p className="text-sm text-slate-500">
-              Ranked by accepted booking revenue.
-            </p>
+            const percentage = filteredBookings.length
+              ? ((item.count / filteredBookings.length) * 100).toFixed(1)
+              : "0.0";
+
+            return (
+              <div
+                key={item.label}
+                className="rounded-xl border border-white/[0.05] bg-[#11101c]/70 p-4 transition hover:border-white/10"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${item.color}`}
+                    />
+                    <span className="text-sm text-slate-400">{item.label}</span>
+                  </div>
+
+                  <Icon size={17} className={item.textColor} />
+                </div>
+
+                <div className="mt-3 flex items-end justify-between">
+                  <p className="text-2xl font-bold text-white">{item.count}</p>
+
+                  <p className="text-xs text-slate-500">{percentage}%</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {filteredBookings.length === 0 && (
+          <p className="mt-5 text-center text-sm text-slate-500">
+            No bookings found for this period.
+          </p>
+        )}
+      </section>
+
+      {/* Hotel Performance */}
+      <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#191727] shadow-xl shadow-black/10">
+        <div className="flex flex-col gap-3 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-teal-500/10 p-2.5">
+              <TrendingUp size={20} className="text-teal-400" />
+            </div>
+
+            <div>
+              <h2 className="font-bold text-white">Hotel Performance</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Ranked by accepted booking revenue.
+              </p>
+            </div>
           </div>
+
+          <span className="w-fit rounded-lg border border-teal-500/20 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-400">
+            {hotelPerformance.length} Hotels
+          </span>
         </div>
 
         {hotelPerformance.length === 0 ? (
-          <div className="p-10 text-center">
-            <FileSpreadsheet size={35} className="mx-auto text-slate-300" />
-            <p className="mt-3 font-medium text-slate-700">
-              No accepted bookings in this period
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              Hotel performance will appear when bookings are accepted.
+          <div className="p-12 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-500/10">
+              <FileSpreadsheet size={30} className="text-violet-400" />
+            </div>
+
+            <h3 className="mt-4 font-semibold text-white">
+              No accepted bookings
+            </h3>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Hotel performance will appear here when bookings are accepted.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px] text-left">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <table className="w-full min-w-[550px] text-left">
+              <thead className="bg-[#11101c]/70 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
-                  <th className="px-5 py-4">Hotel</th>
-                  <th className="px-5 py-4">Accepted Bookings</th>
-                  <th className="px-5 py-4">Estimated Revenue</th>
+                  <th className="px-5 py-4 font-semibold">Hotel</th>
+                  <th className="px-5 py-4 font-semibold">Accepted Bookings</th>
+                  <th className="px-5 py-4 font-semibold">Estimated Revenue</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/[0.05]">
                 {hotelPerformance.map((hotel, index) => (
-                  <tr key={hotel.name}>
+                  <tr
+                    key={hotel.name}
+                    className="transition hover:bg-white/[0.02]"
+                  >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-indigo-600">
+                        <span
+                          className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold ${
+                            index === 0
+                              ? "bg-violet-500/15 text-violet-300"
+                              : "bg-[#252238] text-slate-400"
+                          }`}
+                        >
                           {index + 1}
                         </span>
-                        <span className="font-medium text-slate-800">
+
+                        <span className="font-medium text-slate-200">
                           {hotel.name}
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-slate-600">
-                      {hotel.bookings}
+
+                    <td className="px-5 py-4">
+                      <span className="rounded-lg bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-400">
+                        {hotel.bookings}
+                      </span>
                     </td>
-                    <td className="px-5 py-4 font-semibold text-slate-800">
+
+                    <td className="px-5 py-4 font-semibold text-emerald-400">
                       {money(hotel.revenue)}
                     </td>
                   </tr>
@@ -399,12 +524,23 @@ function AdminReports() {
             </table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Report note */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Revenue is calculated from accepted or confirmed booking totals. It
-        represents estimated booking value, not verified payment collections.
+      {/* Revenue Notice */}
+      <div className="flex items-start gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/[0.06] p-4">
+        <Wallet size={19} className="mt-0.5 shrink-0 text-amber-400" />
+
+        <div>
+          <p className="text-sm font-semibold text-amber-300">
+            Revenue Calculation Notice
+          </p>
+
+          <p className="mt-1 text-sm leading-relaxed text-slate-400">
+            Revenue is calculated from accepted or confirmed booking totals. It
+            represents estimated booking value, not verified payment
+            collections.
+          </p>
+        </div>
       </div>
     </div>
   );

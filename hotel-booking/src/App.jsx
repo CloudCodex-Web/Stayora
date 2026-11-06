@@ -25,6 +25,8 @@ import AdminSettings from "./admin/pages/AdminSettings";
 import AdminNotification from "./admin/pages/AdminNotification";
 import AdminReports from "./admin/pages/AdminReports";
 import ActivityLogs from "./admin/pages/ActivityLogs";
+import BookingCalendar from "./admin/pages/BookingCalendar";
+import ManageRooms from "./admin/pages/ManageRooms";
 
 function App() {
   return (
@@ -56,6 +58,8 @@ function App() {
           <Route path="notifications" element={<AdminNotification />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="activity-logs" element={<ActivityLogs />} />
+          <Route path="calendar" element={<BookingCalendar />} />
+          <Route path="rooms" element={<ManageRooms />} />
         </Route>
       </Route>
     </Routes>

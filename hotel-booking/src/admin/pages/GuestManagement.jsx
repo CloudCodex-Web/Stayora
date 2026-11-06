@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import {
   Users,
@@ -11,9 +12,15 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { getUsers, subscribeToUserChanges } from "../../utils/users";
+import {
+  getUsers,
+  subscribeToUserChanges,
+} from "../../utils/users";
 
-import { getBookings, subscribeToBookingChanges } from "../../utils/bookings";
+import {
+  getBookings,
+  subscribeToBookingChanges,
+} from "../../utils/bookings";
 
 function formatDate(date) {
   if (!date) return "—";
@@ -39,7 +46,7 @@ function getBookingStatus(booking) {
 
 function getBookingTotal(booking) {
   const amount = Number(
-    booking.totalPrice ?? booking.totalAmount ?? booking.price ?? 0,
+    booking.totalPrice ?? booking.totalAmount ?? booking.price ?? 0
   );
 
   return Number.isFinite(amount) ? amount : 0;
@@ -50,7 +57,12 @@ function getGuestEmail(guest) {
 }
 
 function getBookingEmail(booking) {
-  return (booking.userEmail || booking.email || booking.guestEmail || "")
+  return (
+    booking.userEmail ||
+    booking.email ||
+    booking.guestEmail ||
+    ""
+  )
     .trim()
     .toLowerCase();
 }
@@ -86,15 +98,16 @@ function GuestManagement() {
       const email = getGuestEmail(guest);
 
       const guestBookings = bookings.filter(
-        (booking) => email && getBookingEmail(booking) === email,
+        (booking) =>
+          email && getBookingEmail(booking) === email
       );
 
       const accepted = guestBookings.filter(
-        (booking) => getBookingStatus(booking) === "accepted",
+        (booking) => getBookingStatus(booking) === "accepted"
       ).length;
 
       const pending = guestBookings.filter(
-        (booking) => getBookingStatus(booking) === "pending",
+        (booking) => getBookingStatus(booking) === "pending"
       ).length;
 
       return {
@@ -123,37 +136,49 @@ function GuestManagement() {
   const totalGuests = guests.length;
 
   const guestsWithBookings = guestRows.filter(
-    (guest) => guest.bookingCount > 0,
+    (guest) => guest.bookingCount > 0
   ).length;
 
   const totalBookings = bookings.length;
 
   const pendingBookings = bookings.filter(
-    (booking) => getBookingStatus(booking) === "pending",
+    (booking) => getBookingStatus(booking) === "pending"
   ).length;
 
   const selectedGuestBookings = selectedGuest
     ? bookings.filter(
         (booking) =>
           getGuestEmail(selectedGuest) &&
-          getBookingEmail(booking) === getGuestEmail(selectedGuest),
+          getBookingEmail(booking) === getGuestEmail(selectedGuest)
       )
     : [];
 
+  const cardStyle =
+    "rounded-2xl border border-white/[0.07] bg-[#191727]/80 shadow-[0_8px_30px_rgba(0,0,0,0.15)]";
+
+  const inputStyle =
+    "w-full rounded-xl border border-white/[0.08] bg-[#11101c] py-3 pl-10 pr-4 text-sm text-gray-200 outline-none transition placeholder:text-gray-500 focus:border-purple-500/60 focus:ring-2 focus:ring-purple-500/10";
+
   return (
-    <div className="space-y-6">
-      {/* Page heading */}
+    <div className="min-h-screen space-y-6 bg-[#11101c] p-4 text-gray-200 sm:p-6 lg:p-8">
+
+      {/* Page Heading */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-purple-400">
+            Administration
+          </p>
+
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white">
             Guest Management
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+
+          <p className="mt-2 text-sm text-gray-400">
             View registered guests and their booking activity.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-4 py-3 text-sm font-medium text-teal-700">
+        <div className="flex w-fit items-center gap-2 rounded-xl border border-teal-500/20 bg-teal-500/10 px-4 py-3 text-sm font-semibold text-teal-300">
           <Users size={18} />
           {totalGuests} registered guests
         </div>
@@ -182,7 +207,7 @@ function GuestManagement() {
           value={totalBookings}
           description="All recorded bookings"
           icon={<CalendarCheck size={21} />}
-          color="violet"
+          color="purple"
         />
 
         <StatCard
@@ -194,14 +219,15 @@ function GuestManagement() {
         />
       </div>
 
-      {/* Guest table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+      {/* Guest Table */}
+      <div className={`${cardStyle} overflow-hidden`}>
+        <div className="flex flex-col gap-4 border-b border-white/[0.07] p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-white">
               Registered Guests
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+
+            <p className="mt-1 text-sm text-gray-500">
               Search guests and inspect their booking history.
             </p>
           </div>
@@ -209,7 +235,7 @@ function GuestManagement() {
           <div className="relative w-full sm:max-w-xs">
             <Search
               size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
             />
 
             <input
@@ -217,42 +243,42 @@ function GuestManagement() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search name or email..."
-              className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+              className={inputStyle}
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+            <thead className="bg-[#211d35]/70 text-xs uppercase tracking-wider text-gray-400">
               <tr>
                 <th className="px-5 py-4 font-semibold">Guest</th>
                 <th className="px-5 py-4 font-semibold">Registered</th>
                 <th className="px-5 py-4 font-semibold">Bookings</th>
                 <th className="px-5 py-4 font-semibold">Accepted</th>
                 <th className="px-5 py-4 font-semibold">Pending</th>
-                <th className="px-5 py-4 text-right font-semibold">Action</th>
+                <th className="px-5 py-4 text-right font-semibold">
+                  Action
+                </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-white/[0.06]">
               {filteredGuests.map((guest, index) => (
                 <tr
                   key={guest.id || guest.email || index}
-                  className="transition hover:bg-slate-50"
+                  className="transition hover:bg-white/[0.025]"
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-50 font-bold text-teal-700">
-                        {getGuestName(guest).charAt(0).toUpperCase()}
-                      </div>
+                      <Avatar name={getGuestName(guest)} />
 
                       <div>
-                        <p className="font-semibold text-slate-800">
+                        <p className="font-semibold text-gray-200">
                           {getGuestName(guest)}
                         </p>
 
-                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
                           <Mail size={13} />
                           {guest.email || "No email provided"}
                         </p>
@@ -260,23 +286,25 @@ function GuestManagement() {
                     </div>
                   </td>
 
-                  <td className="px-5 py-4 text-sm text-slate-600">
+                  <td className="px-5 py-4 text-sm text-gray-400">
                     {formatDate(
-                      guest.createdAt || guest.registeredAt || guest.joinedAt,
+                      guest.createdAt ||
+                        guest.registeredAt ||
+                        guest.joinedAt
                     )}
                   </td>
 
                   <td className="px-5 py-4">
-                    <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700">
+                    <span className="rounded-lg border border-white/[0.07] bg-[#211d35] px-3 py-1.5 text-sm font-semibold text-gray-300">
                       {guest.bookingCount}
                     </span>
                   </td>
 
-                  <td className="px-5 py-4 text-sm font-medium text-emerald-700">
+                  <td className="px-5 py-4 text-sm font-semibold text-teal-400">
                     {guest.accepted}
                   </td>
 
-                  <td className="px-5 py-4 text-sm font-medium text-amber-700">
+                  <td className="px-5 py-4 text-sm font-semibold text-amber-400">
                     {guest.pending}
                   </td>
 
@@ -284,7 +312,7 @@ function GuestManagement() {
                     <button
                       type="button"
                       onClick={() => setSelectedGuest(guest)}
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                      className="inline-flex items-center gap-2 rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-sm font-semibold text-purple-300 transition hover:border-purple-400/40 hover:bg-purple-500/20"
                     >
                       <Eye size={16} />
                       View
@@ -296,15 +324,15 @@ function GuestManagement() {
               {filteredGuests.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-16 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.07] bg-[#211d35] text-gray-500">
                       <Users size={25} />
                     </div>
 
-                    <p className="mt-4 font-semibold text-slate-800">
+                    <p className="mt-4 font-semibold text-white">
                       No guests found
                     </p>
 
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-gray-500">
                       {search
                         ? "Try a different name or email."
                         : "Registered guest accounts will appear here."}
@@ -316,15 +344,15 @@ function GuestManagement() {
           </table>
         </div>
 
-        <div className="border-t border-slate-100 px-5 py-4 text-sm text-slate-500">
+        <div className="border-t border-white/[0.07] px-5 py-4 text-sm text-gray-500">
           Showing {filteredGuests.length} of {totalGuests} guests
         </div>
       </div>
 
-      {/* Guest details modal */}
+      {/* Guest Details Modal */}
       {selectedGuest && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               setSelectedGuest(null);
@@ -335,23 +363,22 @@ function GuestManagement() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="guest-modal-title"
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/[0.09] bg-[#191727] shadow-2xl"
           >
-            <div className="flex items-start justify-between border-b border-slate-100 p-5 sm:p-6">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-white/[0.07] p-5 sm:p-6">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 font-bold text-teal-700">
-                  {getGuestName(selectedGuest).charAt(0).toUpperCase()}
-                </div>
+                <Avatar name={getGuestName(selectedGuest)} />
 
                 <div>
                   <h2
                     id="guest-modal-title"
-                    className="text-xl font-bold text-slate-900"
+                    className="text-xl font-bold text-white"
                   >
                     {getGuestName(selectedGuest)}
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-gray-500">
                     Guest details and booking history
                   </p>
                 </div>
@@ -361,13 +388,15 @@ function GuestManagement() {
                 type="button"
                 onClick={() => setSelectedGuest(null)}
                 aria-label="Close guest details"
-                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100"
+                className="rounded-lg border border-white/[0.07] p-2 text-gray-400 transition hover:bg-white/[0.06] hover:text-white"
               >
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-6 p-5 sm:p-6">
+
+              {/* Guest Information */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <DetailCard
                   label="Email address"
@@ -379,7 +408,7 @@ function GuestManagement() {
                   value={formatDate(
                     selectedGuest.createdAt ||
                       selectedGuest.registeredAt ||
-                      selectedGuest.joinedAt,
+                      selectedGuest.joinedAt
                   )}
                 />
 
@@ -391,13 +420,18 @@ function GuestManagement() {
                 <DetailCard
                   label="Total booking value"
                   value={`NPR ${selectedGuestBookings
-                    .reduce((sum, booking) => sum + getBookingTotal(booking), 0)
+                    .reduce(
+                      (sum, booking) =>
+                        sum + getBookingTotal(booking),
+                      0
+                    )
                     .toLocaleString("en-NP")}`}
                 />
               </div>
 
+              {/* Booking History */}
               <div>
-                <h3 className="mb-4 text-lg font-bold text-slate-900">
+                <h3 className="mb-4 text-lg font-bold text-white">
                   Booking History
                 </h3>
 
@@ -408,21 +442,27 @@ function GuestManagement() {
 
                       return (
                         <div
-                          key={booking.id || booking.bookingId || index}
-                          className="rounded-xl border border-slate-200 p-4"
+                          key={
+                            booking.id ||
+                            booking.bookingId ||
+                            index
+                          }
+                          className="rounded-xl border border-white/[0.07] bg-[#211d35]/60 p-4 transition hover:border-white/[0.12]"
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                              <p className="font-semibold text-slate-900">
+                              <p className="font-semibold text-white">
                                 {booking.hotelName ||
                                   booking.hotel?.name ||
                                   booking.propertyName ||
                                   "Hotel booking"}
                               </p>
 
-                              <p className="mt-1 text-sm text-slate-500">
+                              <p className="mt-1 text-sm text-gray-500">
                                 Booking ID:{" "}
-                                {booking.id || booking.bookingId || "—"}
+                                {booking.id ||
+                                  booking.bookingId ||
+                                  "—"}
                               </p>
                             </div>
 
@@ -431,30 +471,41 @@ function GuestManagement() {
 
                           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                             <div>
-                              <p className="text-slate-500">Check-in</p>
-                              <p className="mt-1 font-medium text-slate-800">
+                              <p className="text-gray-500">
+                                Check-in
+                              </p>
+
+                              <p className="mt-1 font-medium text-gray-300">
                                 {formatDate(
-                                  booking.checkIn || booking.checkInDate,
+                                  booking.checkIn ||
+                                    booking.checkInDate
                                 )}
                               </p>
                             </div>
 
                             <div>
-                              <p className="text-slate-500">Check-out</p>
-                              <p className="mt-1 font-medium text-slate-800">
+                              <p className="text-gray-500">
+                                Check-out
+                              </p>
+
+                              <p className="mt-1 font-medium text-gray-300">
                                 {formatDate(
-                                  booking.checkOut || booking.checkOutDate,
+                                  booking.checkOut ||
+                                    booking.checkOutDate
                                 )}
                               </p>
                             </div>
 
                             <div>
-                              <p className="text-slate-500">Total</p>
-                              <p className="mt-1 font-semibold text-slate-900">
+                              <p className="text-gray-500">
+                                Total
+                              </p>
+
+                              <p className="mt-1 font-semibold text-teal-300">
                                 NPR{" "}
-                                {getBookingTotal(booking).toLocaleString(
-                                  "en-NP",
-                                )}
+                                {getBookingTotal(
+                                  booking
+                                ).toLocaleString("en-NP")}
                               </p>
                             </div>
                           </div>
@@ -463,17 +514,17 @@ function GuestManagement() {
                     })}
                   </div>
                 ) : (
-                  <div className="rounded-xl bg-slate-50 px-4 py-10 text-center">
+                  <div className="rounded-xl border border-white/[0.06] bg-[#211d35]/50 px-4 py-10 text-center">
                     <CalendarCheck
                       size={28}
-                      className="mx-auto text-slate-400"
+                      className="mx-auto text-gray-500"
                     />
 
-                    <p className="mt-3 font-semibold text-slate-800">
+                    <p className="mt-3 font-semibold text-white">
                       No booking history
                     </p>
 
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-gray-500">
                       This guest has no bookings associated with their email.
                     </p>
                   </div>
@@ -481,11 +532,12 @@ function GuestManagement() {
               </div>
             </div>
 
-            <div className="flex justify-end border-t border-slate-100 p-5">
+            {/* Modal Footer */}
+            <div className="flex justify-end border-t border-white/[0.07] p-5">
               <button
                 type="button"
                 onClick={() => setSelectedGuest(null)}
-                className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+                className="rounded-xl border border-white/[0.08] bg-[#211d35] px-5 py-3 text-sm font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white"
               >
                 Close
               </button>
@@ -499,22 +551,27 @@ function GuestManagement() {
 
 function StatCard({ title, value, description, icon, color }) {
   const colorClasses = {
-    teal: "bg-teal-50 text-teal-700",
-    blue: "bg-blue-50 text-blue-700",
-    violet: "bg-violet-50 text-violet-700",
-    amber: "bg-amber-50 text-amber-700",
+    teal: "border-teal-500/20 bg-teal-500/10 text-teal-400",
+    blue: "border-blue-500/20 bg-blue-500/10 text-blue-400",
+    purple: "border-purple-500/20 bg-purple-500/10 text-purple-400",
+    amber: "border-amber-500/20 bg-amber-500/10 text-amber-400",
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-white/[0.07] bg-[#191727]/80 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.15)]">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+          <p className="text-sm font-medium text-gray-400">
+            {title}
+          </p>
+
+          <p className="mt-2 text-3xl font-extrabold text-white">
+            {value}
+          </p>
         </div>
 
         <div
-          className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+          className={`flex h-11 w-11 items-center justify-center rounded-xl border ${
             colorClasses[color] || colorClasses.teal
           }`}
         >
@@ -522,27 +579,48 @@ function StatCard({ title, value, description, icon, color }) {
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-slate-500">{description}</p>
+      <p className="mt-3 text-xs text-gray-500">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function Avatar({ name }) {
+  const initial =
+    (name || "U").trim().charAt(0).toUpperCase() || "U";
+
+  return (
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-purple-500/20 bg-gradient-to-br from-purple-500/20 to-teal-500/10 font-bold text-purple-300">
+      {initial}
     </div>
   );
 }
 
 function DetailCard({ label, value }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-4">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 break-words font-semibold text-slate-900">{value}</p>
+    <div className="rounded-xl border border-white/[0.06] bg-[#211d35]/60 p-4">
+      <p className="text-sm text-gray-500">{label}</p>
+
+      <p className="mt-2 break-words font-semibold text-gray-200">
+        {value}
+      </p>
     </div>
   );
 }
 
 function StatusBadge({ status }) {
   const styles = {
-    accepted: "bg-emerald-50 text-emerald-700",
-    confirmed: "bg-emerald-50 text-emerald-700",
-    pending: "bg-amber-50 text-amber-700",
-    rejected: "bg-red-50 text-red-700",
-    cancelled: "bg-slate-100 text-slate-600",
+    accepted:
+      "border-teal-500/20 bg-teal-500/10 text-teal-300",
+    confirmed:
+      "border-teal-500/20 bg-teal-500/10 text-teal-300",
+    pending:
+      "border-amber-500/20 bg-amber-500/10 text-amber-300",
+    rejected:
+      "border-red-500/20 bg-red-500/10 text-red-300",
+    cancelled:
+      "border-gray-500/20 bg-gray-500/10 text-gray-400",
   };
 
   const label = status
@@ -551,13 +629,15 @@ function StatusBadge({ status }) {
 
   return (
     <span
-      className={`inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-        styles[status] || "bg-slate-100 text-slate-600"
+      className={`inline-flex w-fit items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
+        styles[status] ||
+        "border-gray-500/20 bg-gray-500/10 text-gray-400"
       }`}
     >
       {(status === "accepted" || status === "confirmed") && (
         <CheckCircle2 size={13} />
       )}
+
       {label}
     </span>
   );

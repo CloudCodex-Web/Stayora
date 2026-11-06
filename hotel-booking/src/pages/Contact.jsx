@@ -344,4 +344,3 @@ function Contact() {
 }
 
 export default Contact;
-s

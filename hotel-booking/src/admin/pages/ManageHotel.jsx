@@ -7,7 +7,7 @@ import {
   X,
   Hotel,
   MapPin,
-  IndianRupee,
+  Coins,
   Star,
   CheckCircle2,
   Ban,
@@ -69,8 +69,8 @@ const emptyForm = {
 };
 
 const statusStyles = {
-  Active: "bg-emerald-50 text-emerald-700",
-  Inactive: "bg-amber-50 text-amber-700",
+  Active: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+  Inactive: "border-amber-400/20 bg-amber-400/10 text-amber-300",
 };
 
 function createHotelId() {
@@ -87,10 +87,6 @@ function normalizeStatus(status) {
     : "Active";
 }
 
-function money(value) {
-  return `NPR ${Number(value || 0).toLocaleString("en-NP")}`;
-}
-
 function loadHotels() {
   const storedHotels = getStoredHotels(initialHotels);
 
@@ -99,6 +95,12 @@ function loadHotels() {
     status: normalizeStatus(hotel.status),
   }));
 }
+
+const cardStyle =
+  "rounded-2xl border border-white/[0.07] bg-[#191727]/80 shadow-lg shadow-black/10";
+
+const inputStyle =
+  "w-full rounded-xl border border-white/10 bg-[#11101c]/80 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-purple-400/50 focus:ring-2 focus:ring-purple-500/10";
 
 export default function ManageHotels() {
   const [hotels, setHotels] = useState(loadHotels);
@@ -296,9 +298,10 @@ export default function ManageHotels() {
         category: "Hotel",
         description:
           editingId !== null
-            ? `${name} hotels were updated.`
+            ? `${name} was updated.`
             : `${name} was added to Stayora.`,
       });
+
       closeForm();
     }
   };
@@ -315,9 +318,9 @@ export default function ManageHotels() {
 
     if (persistHotels(nextHotels)) {
       addActivityLog({
-        action: "Hotel Deleted",
+        action: "Hotel Status Updated",
         category: "Hotel",
-        description: `${hotel.name} was deleted from Stayora.`,
+        description: `${hotel.name} was marked as ${nextStatus}.`,
         target: hotel.id,
       });
 
@@ -337,6 +340,13 @@ export default function ManageHotels() {
     );
 
     if (persistHotels(nextHotels)) {
+      addActivityLog({
+        action: "Hotel Deleted",
+        category: "Hotel",
+        description: `${hotel.name} was deleted from Stayora.`,
+        target: hotel.id,
+      });
+
       setNotice(`${hotel.name} was deleted.`);
     }
   };
@@ -346,20 +356,56 @@ export default function ManageHotels() {
     setStatusFilter("All");
   };
 
+  const summaryCards = [
+    {
+      label: "Total Hotels",
+      value: hotels.length,
+      detail: "All hotel listings",
+      icon: Hotel,
+      color: "text-purple-300",
+      iconBg: "bg-purple-500/10",
+    },
+    {
+      label: "Active Hotels",
+      value: activeCount,
+      detail: "Available for display",
+      icon: CheckCircle2,
+      color: "text-emerald-300",
+      iconBg: "bg-emerald-500/10",
+    },
+    {
+      label: "Inactive Hotels",
+      value: inactiveCount,
+      detail: "Hidden from active listings",
+      icon: Ban,
+      color: "text-amber-300",
+      iconBg: "bg-amber-500/10",
+    },
+    {
+      label: "Average Rating",
+      value: averageRating,
+      detail: "Across rated hotels",
+      icon: Star,
+      color: "text-amber-300",
+      iconBg: "bg-amber-500/10",
+      suffix: averageRating !== "—" ? "/ 5" : "",
+    },
+  ];
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-7 text-slate-200">
       {/* Page heading */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <p className="mb-1 text-sm font-medium text-teal-700">
+          <p className="mb-2 text-xs font-bold tracking-[0.2em] text-teal-300">
             HOTEL MANAGEMENT
           </p>
 
-          <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
             Manage Hotels
           </h2>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-400">
             Manage listings, update prices, and control hotel availability.
           </p>
         </div>
@@ -367,7 +413,7 @@ export default function ManageHotels() {
         <button
           type="button"
           onClick={openAddForm}
-          className="flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-teal-800"
+          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 transition hover:from-purple-500 hover:to-violet-500"
         >
           <Plus size={19} />
           Add New Hotel
@@ -378,7 +424,7 @@ export default function ManageHotels() {
       {notice && (
         <div
           role="status"
-          className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="flex items-start justify-between gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200"
         >
           <span>{notice}</span>
 
@@ -386,6 +432,7 @@ export default function ManageHotels() {
             type="button"
             onClick={() => setNotice("")}
             aria-label="Dismiss notification"
+            className="text-emerald-300 transition hover:text-white"
           >
             <X size={17} />
           </button>
@@ -394,71 +441,42 @@ export default function ManageHotels() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Total Hotels</p>
-            <Hotel className="text-teal-700" size={22} />
-          </div>
+        {summaryCards.map((item) => {
+          const Icon = item.icon;
 
-          <p className="mt-3 text-3xl font-bold text-slate-900">
-            {hotels.length}
-          </p>
+          return (
+            <div
+              key={item.label}
+              className={`${cardStyle} p-5 transition duration-300 hover:-translate-y-1 hover:border-purple-400/20`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-400">{item.label}</p>
 
-          <p className="mt-1 text-xs text-slate-500">All hotel listings</p>
-        </div>
+                <div className={`rounded-xl p-2.5 ${item.iconBg}`}>
+                  <Icon size={21} className={item.color} />
+                </div>
+              </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Active Hotels</p>
-            <CheckCircle2 className="text-emerald-600" size={22} />
-          </div>
+              <p className={`mt-4 text-3xl font-bold text-white`}>
+                {item.value}
+                {item.suffix && (
+                  <span className="ml-1 text-base font-medium text-slate-500">
+                    {item.suffix}
+                  </span>
+                )}
+              </p>
 
-          <p className="mt-3 text-3xl font-bold text-emerald-600">
-            {activeCount}
-          </p>
-
-          <p className="mt-1 text-xs text-slate-500">Available for display</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Inactive Hotels</p>
-            <Ban className="text-amber-600" size={22} />
-          </div>
-
-          <p className="mt-3 text-3xl font-bold text-amber-600">
-            {inactiveCount}
-          </p>
-
-          <p className="mt-1 text-xs text-slate-500">
-            Hidden from active listings
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Average Rating</p>
-            <Star className="fill-amber-400 text-amber-400" size={22} />
-          </div>
-
-          <p className="mt-3 text-3xl font-bold text-slate-900">
-            {averageRating}
-            {averageRating !== "—" && (
-              <span className="ml-1 text-base font-medium text-slate-400">
-                / 5
-              </span>
-            )}
-          </p>
-
-          <p className="mt-1 text-xs text-slate-500">Across rated hotels</p>
-        </div>
+              <p className="mt-1 text-xs text-slate-500">{item.detail}</p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Search and filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className={`${cardStyle} p-4 sm:p-5`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100">
-            <Search size={20} className="shrink-0 text-slate-400" />
+          <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-white/10 bg-[#11101c]/70 px-4 py-3 transition focus-within:border-purple-400/50 focus-within:ring-2 focus-within:ring-purple-500/10">
+            <Search size={19} className="shrink-0 text-slate-500" />
 
             <input
               type="search"
@@ -466,7 +484,7 @@ export default function ManageHotels() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by hotel name or location..."
               aria-label="Search hotels"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
             />
 
             {search && (
@@ -474,7 +492,7 @@ export default function ManageHotels() {
                 type="button"
                 onClick={() => setSearch("")}
                 aria-label="Clear search"
-                className="text-slate-400 hover:text-slate-700"
+                className="text-slate-500 transition hover:text-white"
               >
                 <X size={17} />
               </button>
@@ -482,7 +500,7 @@ export default function ManageHotels() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <SlidersHorizontal size={18} className="text-slate-400" />
+            <SlidersHorizontal size={18} className="text-slate-500" />
 
             <label htmlFor="status-filter" className="sr-only">
               Filter by status
@@ -492,7 +510,7 @@ export default function ManageHotels() {
               id="status-filter"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="min-w-36 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700 outline-none focus:border-teal-600"
+              className="min-w-36 rounded-xl border border-white/10 bg-[#11101c] px-3 py-3 text-sm text-slate-300 outline-none transition focus:border-purple-400/50"
             >
               <option value="All">All statuses</option>
               <option value="Active">Active only</option>
@@ -502,7 +520,7 @@ export default function ManageHotels() {
             <button
               type="button"
               onClick={resetFilters}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-3 text-sm font-medium text-slate-400 transition hover:border-purple-400/30 hover:bg-purple-500/10 hover:text-white"
             >
               <RotateCcw size={15} />
               Reset
@@ -512,10 +530,11 @@ export default function ManageHotels() {
       </div>
 
       {/* Hotels table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col justify-between gap-2 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:px-6">
+      <div className={`${cardStyle} overflow-hidden`}>
+        <div className="flex flex-col justify-between gap-2 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:px-6">
           <div>
-            <h3 className="font-bold text-slate-900">All Hotels</h3>
+            <h3 className="font-bold text-white">All Hotels</h3>
+
             <p className="mt-1 text-sm text-slate-500">
               Search, edit, or change a listing's status.
             </p>
@@ -528,9 +547,11 @@ export default function ManageHotels() {
 
         {filteredHotels.length === 0 ? (
           <div className="px-5 py-16 text-center">
-            <Hotel size={36} className="mx-auto text-slate-300" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10">
+              <Hotel size={30} className="text-purple-300" />
+            </div>
 
-            <p className="mt-3 font-semibold text-slate-700">No hotels found</p>
+            <p className="mt-4 font-semibold text-white">No hotels found</p>
 
             <p className="mt-1 text-sm text-slate-500">
               Try a different search or status filter.
@@ -539,7 +560,7 @@ export default function ManageHotels() {
             <button
               type="button"
               onClick={resetFilters}
-              className="mt-4 font-semibold text-teal-700 hover:text-teal-900"
+              className="mt-4 font-semibold text-teal-300 transition hover:text-teal-200"
             >
               Clear filters
             </button>
@@ -547,7 +568,7 @@ export default function ManageHotels() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] text-left">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <thead className="bg-white/[0.025] text-xs uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-5 py-4 font-semibold">Hotel</th>
                   <th className="px-5 py-4 font-semibold">Price / Night</th>
@@ -559,12 +580,15 @@ export default function ManageHotels() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/[0.06]">
                 {filteredHotels.map((hotel) => {
                   const status = normalizeStatus(hotel.status);
 
                   return (
-                    <tr key={hotel.id} className="transition hover:bg-slate-50">
+                    <tr
+                      key={hotel.id}
+                      className="transition hover:bg-white/[0.025]"
+                    >
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <img
@@ -573,7 +597,7 @@ export default function ManageHotels() {
                               "https://placehold.co/100x100?text=Hotel"
                             }
                             alt={hotel.name}
-                            className="h-14 w-16 rounded-xl bg-slate-100 object-cover"
+                            className="h-14 w-16 rounded-xl border border-white/10 bg-[#11101c] object-cover"
                             onError={(event) => {
                               event.currentTarget.onerror = null;
                               event.currentTarget.src =
@@ -582,12 +606,12 @@ export default function ManageHotels() {
                           />
 
                           <div>
-                            <p className="font-semibold text-slate-900">
+                            <p className="font-semibold text-white">
                               {hotel.name}
                             </p>
 
                             <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                              <MapPin size={13} />
+                              <MapPin size={13} className="text-teal-300" />
                               {hotel.location}
                             </p>
                           </div>
@@ -595,16 +619,16 @@ export default function ManageHotels() {
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4">
-                        <span className="inline-flex items-center font-semibold text-slate-800">
-                          <IndianRupee size={15} />
-                          {Number(hotel.price || 0).toLocaleString("en-NP")}
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-200">
+                          <Coins size={15} className="text-teal-300" />
+                          NPR {Number(hotel.price || 0).toLocaleString("en-NP")}
                         </span>
 
-                        <p className="text-xs text-slate-400">per night</p>
+                        <p className="text-xs text-slate-500">per night</p>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                        <span className="inline-flex items-center gap-1 font-medium text-slate-300">
                           <Star
                             size={15}
                             className="fill-amber-400 text-amber-400"
@@ -617,7 +641,7 @@ export default function ManageHotels() {
 
                       <td className="px-5 py-4">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[status]}`}
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusStyles[status]}`}
                         >
                           {status}
                         </span>
@@ -635,8 +659,8 @@ export default function ManageHotels() {
                             }
                             className={`rounded-lg border p-2 transition ${
                               status === "Active"
-                                ? "border-amber-200 text-amber-700 hover:bg-amber-50"
-                                : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                ? "border-amber-400/20 text-amber-300 hover:bg-amber-400/10"
+                                : "border-emerald-400/20 text-emerald-300 hover:bg-emerald-400/10"
                             }`}
                           >
                             {status === "Active" ? (
@@ -651,7 +675,7 @@ export default function ManageHotels() {
                             onClick={() => openEditForm(hotel)}
                             aria-label={`Edit ${hotel.name}`}
                             title="Edit hotel"
-                            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                            className="rounded-lg border border-white/10 p-2 text-slate-400 transition hover:border-purple-400/30 hover:bg-purple-500/10 hover:text-purple-300"
                           >
                             <Pencil size={17} />
                           </button>
@@ -661,7 +685,7 @@ export default function ManageHotels() {
                             onClick={() => handleDelete(hotel)}
                             aria-label={`Delete ${hotel.name}`}
                             title="Delete hotel"
-                            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                            className="rounded-lg border border-white/10 p-2 text-slate-400 transition hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-300"
                           >
                             <Trash2 size={17} />
                           </button>
@@ -679,7 +703,7 @@ export default function ManageHotels() {
       {/* Add/Edit modal */}
       {showForm && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeForm();
           }}
@@ -688,18 +712,18 @@ export default function ManageHotels() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="hotel-form-title"
-            className="my-auto max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
+            className="my-auto max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#191727] shadow-2xl shadow-black/50"
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.07] bg-[#191727]/95 px-6 py-5 backdrop-blur-xl">
               <div>
                 <h3
                   id="hotel-form-title"
-                  className="text-xl font-bold text-slate-900"
+                  className="text-xl font-bold text-white"
                 >
                   {editingId !== null ? "Edit Hotel" : "Add New Hotel"}
                 </h3>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-400">
                   Enter the hotel information below.
                 </p>
               </div>
@@ -708,7 +732,7 @@ export default function ManageHotels() {
                 type="button"
                 onClick={closeForm}
                 aria-label="Close form"
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
               >
                 <X size={21} />
               </button>
@@ -719,7 +743,7 @@ export default function ManageHotels() {
                 <div>
                   <label
                     htmlFor="hotel-name"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                    className="mb-2 block text-sm font-medium text-slate-300"
                   >
                     Hotel Name *
                   </label>
@@ -732,14 +756,14 @@ export default function ManageHotels() {
                     placeholder="e.g. Kathmandu Grand Hotel"
                     required
                     maxLength={100}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    className={inputStyle}
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="hotel-location"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                    className="mb-2 block text-sm font-medium text-slate-300"
                   >
                     Location *
                   </label>
@@ -752,14 +776,14 @@ export default function ManageHotels() {
                     placeholder="e.g. Thamel, Kathmandu"
                     required
                     maxLength={150}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    className={inputStyle}
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="hotel-price"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                    className="mb-2 block text-sm font-medium text-slate-300"
                   >
                     Price per night (NPR) *
                   </label>
@@ -775,14 +799,14 @@ export default function ManageHotels() {
                     onChange={handleChange}
                     placeholder="e.g. 4500"
                     required
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    className={inputStyle}
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="hotel-rating"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                    className="mb-2 block text-sm font-medium text-slate-300"
                   >
                     Rating (1–5) *
                   </label>
@@ -797,14 +821,14 @@ export default function ManageHotels() {
                     value={form.rating}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    className={inputStyle}
                   />
                 </div>
 
                 <div className="sm:col-span-2">
                   <label
                     htmlFor="hotel-image"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                    className="mb-2 block text-sm font-medium text-slate-300"
                   >
                     Hotel Image URL
                   </label>
@@ -816,7 +840,7 @@ export default function ManageHotels() {
                     value={form.image}
                     onChange={handleChange}
                     placeholder="https://example.com/hotel-image.jpg"
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    className={inputStyle}
                   />
 
                   <p className="mt-2 text-xs text-slate-500">
@@ -827,7 +851,7 @@ export default function ManageHotels() {
                 <div className="sm:col-span-2">
                   <label
                     htmlFor="hotel-status"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                    className="mb-2 block text-sm font-medium text-slate-300"
                   >
                     Listing Status
                   </label>
@@ -837,7 +861,7 @@ export default function ManageHotels() {
                     name="status"
                     value={form.status}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                    className={`${inputStyle} bg-[#11101c]`}
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -848,17 +872,17 @@ export default function ManageHotels() {
               {error && (
                 <p
                   role="alert"
-                  className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
+                  className="rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300"
                 >
                   {error}
                 </p>
               )}
 
-              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-3 border-t border-white/[0.07] pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="rounded-xl border border-slate-300 px-5 py-3 font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
                 >
                   Cancel
                 </button>
@@ -866,7 +890,7 @@ export default function ManageHotels() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 transition hover:from-purple-500 hover:to-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSaving
                     ? "Saving..."
